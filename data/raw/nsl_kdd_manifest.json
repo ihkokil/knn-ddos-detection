@@ -1,0 +1,28 @@
+{
+  "dataset": "NSL-KDD",
+  "version": "1.0",
+  "source_url": "https://www.unb.ca/cic/datasets/nsl.html",
+  "citation": "Tavallaee, M., Bagheri, E., Lu, W., Ghorbani, A.A. (2009). A Detailed Analysis of the KDD CUP 99 Data Set. In: 2nd IEEE Symposium on Computational Intelligence for Security and Defense Applications (CISDA).",
+  "license": "NSL-KDD Dataset License - Academic use only",
+  "download_date": "2026-10-15T22:02:29.753873",
+  "files": {
+    "KDDTrain+.txt": {
+      "path": "data\\raw\\nslkdd\\KDDTrain+.txt",
+      "status": "MISSING",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "description": "Training set with 41 features + label + difficulty"
+    },
+    "KDDTest+.txt": {
+      "path": "data\\raw\\nslkdd\\KDDTest+.txt",
+      "status": "MISSING",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "description": "Test set with 41 features + label + difficulty"
+    },
+    "KDDTrain+_20Percent.txt": {
+      "path": "data\\raw\\nslkdd\\KDDTrain+_20Percent.txt",
+      "status": "MISSING",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "description": "20% training subset for quick experiments"
+    }
+  }
+}

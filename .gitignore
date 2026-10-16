@@ -1,0 +1,47 @@
+# Documentation and private paper drafts
+docx/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Large dataset dumps (downloaded via script)
+data/raw/cicddos2019/*.csv
+data/raw/cicddos2019/*.pcap
+*.pcap
+
+# Temporary results and plots (preserve .gitkeep)
+results/*
+!results/.gitkeep
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

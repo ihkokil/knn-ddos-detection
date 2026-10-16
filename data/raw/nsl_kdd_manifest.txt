@@ -1,0 +1,20 @@
+DATASET MANIFEST: NSL-KDD
+============================================================
+
+Version: 1.0
+Source: https://www.unb.ca/cic/datasets/nsl.html
+Citation: Tavallaee, M., Bagheri, E., Lu, W., Ghorbani, A.A. (2009). A Detailed Analysis of the KDD CUP 99 Data Set. In: 2nd IEEE Symposium on Computational Intelligence for Security and Defense Applications (CISDA).
+License: NSL-KDD Dataset License - Academic use only
+Downloaded: 2026-10-15T22:02:29.753873
+
+FILES:
+------------------------------------------------------------
+
+KDDTrain+.txt:
+  Status: MISSING
+
+KDDTest+.txt:
+  Status: MISSING
+
+KDDTrain+_20Percent.txt:
+  Status: MISSING
