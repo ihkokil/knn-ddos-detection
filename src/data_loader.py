@@ -137,9 +137,14 @@ def load_insdn(dataset_path: str = None,
         dataset_path = _resolve_dataset_path(None, "insdn")
     else:
         dataset_path = _resolve_dataset_path(dataset_path, "insdn")
-        
-    train_path = os.path.join(dataset_path, "insdn_ddos_binary_0n1d_train_smote.csv")
-    test_path = os.path.join(dataset_path, "insdn_test_labeled.csv")
+    clean_tr_path = os.path.join(dataset_path, "insdn_clean_train.csv")
+    clean_te_path = os.path.join(dataset_path, "insdn_clean_test.csv")
+    if os.path.exists(clean_tr_path) and os.path.exists(clean_te_path):
+        train_path = clean_tr_path
+        test_path = clean_te_path
+    else:
+        train_path = os.path.join(dataset_path, "insdn_ddos_binary_0n1d_train_smote.csv")
+        test_path = os.path.join(dataset_path, "insdn_test_labeled.csv")
     raw_test_path = os.path.join(dataset_path, "insdn_ddos_binary_0n1d_test.csv")
     raw_label_path = os.path.join(dataset_path, "insdn_ddos_label.csv")
     

@@ -49,6 +49,18 @@ def test_thresholding_and_analysis():
     assert np.array_equal(binary, [0, 0, 0, 1, 1, 1])
     assert th == 0.5
     
+    # Test supervised Youden optimization
+    y_true = np.array([0, 0, 0, 1, 1, 1])
+    b_youd, th_youd = compute_degree_with_threshold(degrees, method='youden', y_true=y_true)
+    assert np.array_equal(b_youd, y_true)
+    assert 0.3 < th_youd <= 0.7
+    
+    # Test unsupervised Otsu thresholding
+    b_otsu, th_otsu = compute_degree_with_threshold(degrees, method='otsu')
+    assert np.array_equal(b_otsu, [0, 0, 0, 1, 1, 1])
+    assert 0.3 < th_otsu <= 0.7
+    
     report = degree_analysis_report(degrees)
     assert report['n_samples'] == 6
     assert 0.0 <= report['degree_stats']['mean'] <= 1.0
+

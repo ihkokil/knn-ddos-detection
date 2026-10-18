@@ -178,8 +178,14 @@ def load_dataset_with_schema(dataset_name: str, config: Q1EvaluationConfig) -> D
 
     elif dataset_name.upper() in ["INSDN", "IN-SDN"]:
         data_dir = Path(config.data_root) / "insdn"
-        train_path = data_dir / "insdn_ddos_binary_0n1d_train_smote.csv"
-        test_path = data_dir / "insdn_test_labeled.csv"
+        clean_tr_path = data_dir / "insdn_clean_train.csv"
+        clean_te_path = data_dir / "insdn_clean_test.csv"
+        if clean_tr_path.exists() and clean_te_path.exists():
+            train_path = clean_tr_path
+            test_path = clean_te_path
+        else:
+            train_path = data_dir / "insdn_ddos_binary_0n1d_train_smote.csv"
+            test_path = data_dir / "insdn_test_labeled.csv"
         
         if not train_path.exists() or not test_path.exists():
             if config.download_datasets:
@@ -506,11 +512,12 @@ def run_multi_trial_evaluation(data: Dict[str, Any], config: Q1EvaluationConfig)
         # Evaluate KNN
         for name, model in knn_models.items():
             t_infer = time.perf_counter()
-            y_pred = model.predict(X_te)
             if name in ['improved', 'proposed']:
                 y_proba = model.predict_proba(X_te, degrees_test=deg_te)
+                y_pred = model.predict(X_te, degrees_test=deg_te)
             else:
                 y_proba = model.predict_proba(X_te)
+                y_pred = model.predict(X_te)
             infer_duration = time.perf_counter() - t_infer
             
             if y_proba.ndim == 1:
@@ -590,15 +597,11 @@ def run_ablation_study(data: Dict[str, Any], config: Q1EvaluationConfig) -> Dict
     print("Running Ablation Study")
     print(f"{'='*60}")
     
-    X = np.vstack([data["X_train"], data["X_test"]])
-    y = np.concatenate([data["y_train"], data["y_test"]])
-    degrees = np.concatenate([data["degrees_train"], data["degrees_test"]])
-    
-    # Use a fixed split for ablation
-    from sklearn.model_selection import train_test_split
-    X_tr, X_te, y_tr, y_te, deg_tr, deg_te = train_test_split(
-        X, y, degrees, test_size=config.test_size, random_state=42, stratify=y
-    )
+    # Strictly leak-free evaluation: train on training split, evaluate on held-out test split
+    X_tr = data["X_train"]
+    y_tr = data["y_train"]
+    X_te = data["X_test"]
+    y_te = data["y_test"]
     
     feature_names = data["feature_names"]
     

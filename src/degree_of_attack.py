@@ -282,25 +282,72 @@ def _compute_protocol_flag_score_array(X: np.ndarray,
 
 def compute_degree_with_threshold(degrees: np.ndarray, 
                                   threshold: float = 0.5,
-                                  method: str = 'fixed') -> Tuple[np.ndarray, float]:
+                                  method: str = 'fixed',
+                                  y_true: Optional[np.ndarray] = None) -> Tuple[np.ndarray, float]:
+    """
+    Classify continuous degree-of-attack metrics into binary decisions.
+    
+    Parameters
+    ----------
+    degrees : np.ndarray
+        Continuous degree-of-attack values in [0, 1]
+    threshold : float, default=0.5
+        Default cutoff threshold
+    method : {'fixed', 'youden', 'otsu'}
+        Thresholding strategy:
+        - 'fixed': static threshold cutoff
+        - 'youden': optimizes Youden's J statistic (TPR - FPR) against ground-truth labels if provided
+        - 'otsu': maximizes inter-class variance on unlabeled degree distributions
+    y_true : np.ndarray, optional
+        Ground-truth binary labels (required for supervised Youden optimization)
+    """
+    if len(degrees) == 0:
+        return np.zeros(0, dtype=int), threshold
+        
     if method == 'fixed':
         binary = (degrees >= threshold).astype(int)
         return binary, threshold
     elif method == 'youden':
-        best_threshold = threshold
-        best_youden = -1
-        for t in np.linspace(0.05, 0.95, 91):
-            binary = (degrees >= t).astype(int)
-            if np.sum(binary) == 0 or np.sum(~binary) == 0:
-                continue
-            youden = 1 - 2 * abs(t - 0.5)
-            if youden > best_youden:
-                best_youden = youden
-                best_threshold = t
-        return (degrees >= best_threshold).astype(int), best_threshold
+        best_threshold = float(threshold)
+        if y_true is not None and len(np.unique(y_true)) > 1:
+            best_youden = -1.0
+            y_arr = np.asarray(y_true, dtype=int)
+            pos_mask = (y_arr == 1)
+            neg_mask = (y_arr == 0)
+            n_pos = np.sum(pos_mask)
+            n_neg = np.sum(neg_mask)
+            
+            for t in np.linspace(0.05, 0.95, 91):
+                pred_pos = degrees >= t
+                tpr = np.sum(pred_pos & pos_mask) / n_pos if n_pos > 0 else 0.0
+                fpr = np.sum(pred_pos & neg_mask) / n_neg if n_neg > 0 else 0.0
+                j_stat = tpr - fpr
+                if j_stat > best_youden:
+                    best_youden = j_stat
+                    best_threshold = float(t)
+        else:
+            # Unsupervised maximum inter-class variance (Otsu's method)
+            best_var = -1.0
+            total_var = np.var(degrees)
+            if total_var > 1e-8:
+                for t in np.linspace(0.05, 0.95, 91):
+                    w0 = np.mean(degrees < t)
+                    w1 = np.mean(degrees >= t)
+                    if w0 == 0 or w1 == 0:
+                        continue
+                    m0 = np.mean(degrees[degrees < t])
+                    m1 = np.mean(degrees[degrees >= t])
+                    between_var = w0 * w1 * ((m0 - m1) ** 2)
+                    if between_var > best_var:
+                        best_var = between_var
+                        best_threshold = float(t)
+                        
+        binary = (degrees >= best_threshold).astype(int)
+        return binary, best_threshold
     else:
         binary = (degrees >= threshold).astype(int)
         return binary, threshold
+
 
 
 def degree_analysis_report(degrees: np.ndarray, true_labels: np.ndarray = None,

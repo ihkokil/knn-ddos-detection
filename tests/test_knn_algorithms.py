@@ -98,3 +98,41 @@ class TestProposedKNN:
         proba = clf.predict_proba(X_te)
         assert len(preds) == len(X_te)
         assert not np.isnan(proba).any()
+
+    def test_odds_ratio_bayesian_monotonicity(self, synthetic_data):
+        X_tr, y_tr = synthetic_data['X_train'], synthetic_data['y_train']
+        X_te = synthetic_data['X_test'][:10]
+        d_tr = np.full(len(X_tr), 0.5)
+        
+        clf = ProposedKNN(k=5, prior_weight=0.3)
+        clf.fit(X_tr, y_tr, d_tr)
+        
+        # Low attack prior telemetry vs high attack prior telemetry
+        low_deg = np.full(len(X_te), 0.1)
+        high_deg = np.full(len(X_te), 0.9)
+        
+        p_low = clf.predict_proba(X_te, degrees_test=low_deg)[:, 1]
+        p_high = clf.predict_proba(X_te, degrees_test=high_deg)[:, 1]
+        
+        # Higher attack telemetry should strictly increase posterior attack probability
+        assert np.all(p_high >= p_low)
+        np.testing.assert_allclose(np.sum(clf.predict_proba(X_te, degrees_test=high_deg), axis=1), 1.0, atol=1e-5)
+
+    def test_extreme_telemetry_bounds(self, synthetic_data):
+        X_tr, y_tr = synthetic_data['X_train'], synthetic_data['y_train']
+        X_te = synthetic_data['X_test'][:10]
+        
+        clf = ProposedKNN(k=5, prior_weight=0.5)
+        clf.fit(X_tr, y_tr)
+        
+        # Test extreme boundary conditions: 0.0 and 1.0
+        p_zero = clf.predict_proba(X_te, degrees_test=np.zeros(len(X_te)))
+        p_one = clf.predict_proba(X_te, degrees_test=np.ones(len(X_te)))
+        
+        assert not np.isnan(p_zero).any()
+        assert not np.isnan(p_one).any()
+        assert not np.isinf(p_zero).any()
+        assert not np.isinf(p_one).any()
+        assert (p_zero >= 0.0).all() and (p_zero <= 1.0).all()
+        assert (p_one >= 0.0).all() and (p_one <= 1.0).all()
+

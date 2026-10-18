@@ -35,39 +35,27 @@ class AblationConfig:
 
 # Define all ablation variants
 ABLATION_VARIANTS = [
-    # Base: Standard KNN (no degree, no adaptive, no dual)
+    # Base 1: Standard uniform KNN
     AblationConfig("baseline_knn", 
                    method="baseline", weights="uniform", adaptive_k=False),
     
-    # Base paper: Improved KNN with degree-weighted distance + degree voting
+    # Base 2: Dong & Sarem (2020) Improved KNN (exponential distance weighting)
     AblationConfig("base_paper", 
+                   method="improved", weights="exponential", adaptive_k=False),
+    
+    # Variant 1: Improved KNN + Exemplar Degree Weighting
+    AblationConfig("degree_weighted", 
                    method="improved", weights="attack_degree", adaptive_k=False),
     
-    # Ablation 1: Proposed distance compression only (no adaptive K, no dual voting)
-    AblationConfig("distance_compression_only", 
-                   method="proposed", weights="attack_degree", adaptive_k=False),
-    
-    # Ablation 2: Adaptive K only (standard distance, degree voting)
+    # Variant 2: Adaptive K only (exponential distance, no severity multiplier)
     AblationConfig("adaptive_k_only", 
-                   method="proposed", weights="attack_degree", adaptive_k=True),
+                   method="proposed", weights="exponential", adaptive_k=True),
     
-    # Ablation 3: Dual voting only (proposed distance, no adaptive K)
+    # Variant 3: Dual severity voting only (fixed k=5, dual proximity-severity)
     AblationConfig("dual_voting_only", 
                    method="proposed", weights="dual", adaptive_k=False),
     
-    # Ablation 4: Proposed distance + adaptive K (no dual voting)
-    AblationConfig("distance_adaptive", 
-                   method="proposed", weights="attack_degree", adaptive_k=True),
-    
-    # Ablation 5: Proposed distance + dual voting (no adaptive K)
-    AblationConfig("distance_dual", 
-                   method="proposed", weights="dual", adaptive_k=False),
-    
-    # Ablation 6: Adaptive K + dual voting (standard distance - use improved as base)
-    AblationConfig("adaptive_dual", 
-                   method="improved", weights="dual", adaptive_k=True),  # Custom
-    
-    # Full proposed: distance compression + adaptive K + dual voting
+    # Full proposed: Adaptive K + Dual proximity-severity voting
     AblationConfig("full_proposed", 
                    method="proposed", weights="dual", adaptive_k=True),
 ]

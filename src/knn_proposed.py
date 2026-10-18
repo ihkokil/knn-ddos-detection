@@ -49,13 +49,15 @@ class ProposedKNN(ImprovedKNN):
     
     def __init__(self, k: int = 5, metric: str = 'euclidean',
                  weights: str = 'dual', adaptive_k: bool = True,
-                 beta: float = 0.5):
-        super().__init__(k=k, metric=metric, weights=weights)
+                 beta: float = 0.5, prior_weight: float = 0.0, **kwargs):
+        super().__init__(k=k, metric=metric, weights=weights, **kwargs)
         self.adaptive_k = adaptive_k
         self.k_base = k
         self.beta = beta
+        self.prior_weight = prior_weight
         self.max_degree: float = 1.0
         self.min_degree: float = 0.0
+        self.base_prior: float = 0.5
         
     def fit(self, X: np.ndarray, y: np.ndarray,
             degrees: Optional[np.ndarray] = None) -> 'ProposedKNN':
@@ -67,6 +69,10 @@ class ProposedKNN(ImprovedKNN):
         else:
             self.max_degree = 1.0
             self.min_degree = 0.0
+        if self.y_train is not None and len(self.y_train) > 0:
+            self.base_prior = float(np.clip(np.mean(self.y_train == 1), 0.05, 0.95))
+        else:
+            self.base_prior = 0.5
         return self
 
     def predict_proba(self, X: np.ndarray, degrees_test: Optional[np.ndarray] = None) -> np.ndarray:
@@ -128,7 +134,7 @@ class ProposedKNN(ImprovedKNN):
         d_scale = np.std(distances, axis=1, keepdims=True) + 0.1 * np.median(distances, axis=1, keepdims=True) + 1e-4
         w = np.exp(-(distances - d_min) / d_scale) * active_mask
         
-        if self.degrees_train is not None:
+        if self.degrees_train is not None and self.weights in ('dual', 'bayesian_fusion'):
             k_degs = self.degrees_train[indices]
             norm_deg = k_degs / (self.max_degree + epsilon)
             sev_mult = np.where(
@@ -138,25 +144,24 @@ class ProposedKNN(ImprovedKNN):
             )
             w = w * sev_mult * active_mask
             
-        lik_att = np.sum(w * (labels == 1), axis=1) + epsilon
-        lik_norm = np.sum(w * (labels == 0), axis=1) + epsilon
+        w_att = np.sum(w * (labels == 1), axis=1)
+        w_norm = np.sum(w * (labels == 0), axis=1)
+        w_total = w_att + w_norm + epsilon
+        p_spatial = np.clip(w_att / w_total, 1e-5, 1.0 - 1e-5)
         
-        # 3. Calibrated Bayesian Evidence Fusion
-        if degrees_test is not None:
-            prior_att = np.clip(np.asarray(degrees_test, dtype=np.float32).reshape(-1), 0.05, 0.95)
-        elif self.degrees_train is not None:
-            w_sum = np.sum(w, axis=1, keepdims=True) + epsilon
-            norm_w = w / w_sum
-            k_degs = self.degrees_train[indices]
-            inferred_deg = np.sum(norm_w * k_degs, axis=1)
-            prior_att = np.clip(inferred_deg / (self.max_degree + epsilon), 0.05, 0.95)
+        # 3. Calibrated Bayesian Telemetry Fusion
+        if degrees_test is not None and self.prior_weight > 1e-4:
+            pi_te = np.clip(np.asarray(degrees_test, dtype=np.float32).reshape(-1), 0.05, 0.95)
+            # Smooth interpolation between training base rate and telemetry prior
+            pi_fused = (1.0 - self.prior_weight) * self.base_prior + self.prior_weight * pi_te
+            odds_prior = pi_fused / (1.0 - pi_fused)
+            odds_base = self.base_prior / (1.0 - self.base_prior)
+            odds_spatial = p_spatial / (1.0 - p_spatial)
+            odds_post = odds_spatial * (odds_prior / odds_base)
+            prob_attack = np.clip(odds_post / (1.0 + odds_post), 0.0, 1.0)
         else:
-            prior_att = np.full(n_samples, 0.5, dtype=np.float32)
+            prob_attack = p_spatial
             
-        post_num = lik_att * prior_att
-        post_den = post_num + lik_norm * (1.0 - prior_att) + epsilon
-        prob_attack = np.clip(post_num / post_den, 0.0, 1.0)
-        
         return np.column_stack([1.0 - prob_attack, prob_attack])
 
     def predict(self, X: np.ndarray, degrees_test: Optional[np.ndarray] = None) -> np.ndarray:

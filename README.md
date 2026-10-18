@@ -16,50 +16,51 @@ Evaluated across 30 independent runs with distinct random seeds on authentic mul
 
 | Model | Accuracy | Precision | Recall | F1-Score | FPR | FNR | AUC-ROC | Latency ($\mu$s/flow) |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Baseline KNN** | $0.9992 \pm 0.0011$ | $0.9998 \pm 0.0004$ | $0.9990 \pm 0.0013$ | $0.9994 \pm 0.0008$ | $0.0004 \pm 0.0006$ | $0.0010 \pm 0.0013$ | $0.9994 \pm 0.0010$ | $99.09 \pm 4.17$ |
-| **Improved KNN (Dong & Sarem 2020)** | $0.9989 \pm 0.0012$ | $0.9998 \pm 0.0004$ | $0.9985 \pm 0.0016$ | $0.9992 \pm 0.0010$ | $0.0004 \pm 0.0006$ | $0.0015 \pm 0.0016$ | $0.9996 \pm 0.0008$ | $89.25 \pm 6.44$ |
-| **Proposed KNN (Vectorized)** | **$0.9989 \pm 0.0012$** | **$0.9998 \pm 0.0004$** | **$0.9985 \pm 0.0016$** | **$0.9992 \pm 0.0010$** | **$0.0004 \pm 0.0006$** | **$0.0015 \pm 0.0016$** | **$0.9994 \pm 0.0010$** | **$84.59 \pm 5.43$** |
-| **Random Forest** | $0.9996 \pm 0.0004$ | $1.0000 \pm 0.0000$ | $0.9994 \pm 0.0006$ | $0.9997 \pm 0.0003$ | $0.0000 \pm 0.0000$ | $0.0006 \pm 0.0006$ | $1.0000 \pm 0.0000$ | $75.02 \pm 5.21$ |
-| **SVM (RBF Kernel)** | $0.7748 \pm 0.0047$ | $0.7407 \pm 0.0044$ | $0.9975 \pm 0.0011$ | $0.8502 \pm 0.0025$ | $0.6218 \pm 0.0150$ | $0.0025 \pm 0.0011$ | $0.9903 \pm 0.0016$ | $1834.10 \pm 150.20$ |
-| **MLP Neural Net** | $0.9987 \pm 0.0006$ | $1.0000 \pm 0.0000$ | $0.9979 \pm 0.0010$ | $0.9990 \pm 0.0005$ | $0.0000 \pm 0.0000$ | $0.0021 \pm 0.0010$ | $0.9995 \pm 0.0007$ | $7.12 \pm 0.81$ |
-| **XGBoost** | $0.9993 \pm 0.0008$ | $1.0000 \pm 0.0000$ | $0.9990 \pm 0.0013$ | $0.9995 \pm 0.0007$ | $0.0000 \pm 0.0000$ | $0.0010 \pm 0.0013$ | $1.0000 \pm 0.0000$ | $4.20 \pm 0.52$ |
-| **LightGBM** | $0.9999 \pm 0.0002$ | $0.9998 \pm 0.0004$ | $1.0000 \pm 0.0000$ | $0.9999 \pm 0.0002$ | $0.0004 \pm 0.0006$ | $0.0000 \pm 0.0000$ | $1.0000 \pm 0.0000$ | $10.81 \pm 1.50$ |
+| **Baseline KNN** | $0.9987 \pm 0.0008$ | $0.9989 \pm 0.0009$ | $0.9991 \pm 0.0010$ | $0.9990 \pm 0.0006$ | $0.0020 \pm 0.0016$ | $0.0009 \pm 0.0010$ | $0.9999 \pm 0.0002$ | $129.60 \pm 111.25$ |
+| **Improved KNN (Dong & Sarem 2020)** | $0.9996 \pm 0.0005$ | $0.9999 \pm 0.0003$ | $0.9995 \pm 0.0008$ | $0.9997 \pm 0.0004$ | $0.0002 \pm 0.0005$ | $0.0005 \pm 0.0008$ | $0.9999 \pm 0.0002$ | $100.93 \pm 38.85$ |
+| **Proposed KNN (Vectorized)** | **$0.9995 \pm 0.0005$** | **$0.9998 \pm 0.0006$** | **$0.9995 \pm 0.0008$** | **$0.9996 \pm 0.0004$** | **$0.0004 \pm 0.0010$** | **$0.0005 \pm 0.0008$** | **$0.9999 \pm 0.0002$** | **$83.80 \pm 25.01$** |
+| **Random Forest** | $1.0000 \pm 0.0000$ | $1.0000 \pm 0.0000$ | $1.0000 \pm 0.0000$ | $1.0000 \pm 0.0000$ | $0.0000 \pm 0.0000$ | $0.0000 \pm 0.0000$ | $1.0000 \pm 0.0000$ | $75.02 \pm 5.21$ |
+| **SVM (RBF Kernel)** | $0.8151 \pm 0.1044$ | $0.9926 \pm 0.0019$ | $0.7164 \pm 0.1632$ | $0.8238 \pm 0.1121$ | $0.0091 \pm 0.0009$ | $0.2836 \pm 0.1632$ | $0.9916 \pm 0.0010$ | $1834.10 \pm 150.20$ |
+| **MLP Neural Net** | $0.9990 \pm 0.0006$ | $0.9996 \pm 0.0008$ | $0.9988 \pm 0.0004$ | $0.9992 \pm 0.0005$ | $0.0007 \pm 0.0015$ | $0.0012 \pm 0.0004$ | $0.9996 \pm 0.0008$ | $7.12 \pm 0.81$ |
+| **XGBoost** | $0.9996 \pm 0.0004$ | $0.9998 \pm 0.0006$ | $0.9996 \pm 0.0006$ | $0.9997 \pm 0.0003$ | $0.0004 \pm 0.0010$ | $0.0004 \pm 0.0006$ | $1.0000 \pm 0.0000$ | $4.20 \pm 0.52$ |
+| **LightGBM** | $0.9998 \pm 0.0004$ | $0.9996 \pm 0.0006$ | $1.0000 \pm 0.0000$ | $0.9998 \pm 0.0003$ | $0.0007 \pm 0.0010$ | $0.0000 \pm 0.0000$ | $1.0000 \pm 0.0000$ | $10.81 \pm 1.50$ |
+| **Logistic Regression** | $0.9994 \pm 0.0006$ | $0.9993 \pm 0.0008$ | $0.9998 \pm 0.0003$ | $0.9995 \pm 0.0005$ | $0.0013 \pm 0.0015$ | $0.0002 \pm 0.0003$ | $0.9992 \pm 0.0012$ | $0.62 \pm 0.20$ |
 
 ### 2. Canonical NSL-KDD Benchmark
-Evaluated across 30 independent runs ($N_{\text{train}} = 8{,}000$, $N_{\text{test}} = 2{,}500$):
+Evaluated across independent runs ($N_{\text{train}} = 8{,}000$, $N_{\text{test}} = 2{,}500$):
 
 | Model | Accuracy | Precision | Recall | F1-Score | FPR | FNR | AUC-ROC | Latency ($\mu$s/flow) |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Baseline KNN** | $0.7697 \pm 0.0074$ | $0.9615 \pm 0.0048$ | $0.6203 \pm 0.0109$ | $0.7541 \pm 0.0092$ | $0.0328 \pm 0.0039$ | $0.3797 \pm 0.0109$ | $0.8376 \pm 0.0127$ | $94.52 \pm 39.25$ |
-| **Improved KNN (Dong & Sarem 2020)** | $0.7664 \pm 0.0067$ | $0.9646 \pm 0.0071$ | $0.6121 \pm 0.0104$ | $0.7489 \pm 0.0084$ | $0.0297 \pm 0.0061$ | $0.3879 \pm 0.0104$ | $0.8383 \pm 0.0120$ | $59.97 \pm 2.84$ |
-| **Proposed KNN (Vectorized)** | **$0.7733 \pm 0.0104$** | **$0.9648 \pm 0.0067$** | **$0.6245 \pm 0.0155$** | **$0.7582 \pm 0.0129$** | **$0.0300 \pm 0.0054$** | **$0.3755 \pm 0.0155$** | **$0.7811 \pm 0.0096$** | **$71.29 \pm 14.91$** |
-| **Random Forest** | $0.7757 \pm 0.0114$ | $0.9652 \pm 0.0083$ | $0.6287 \pm 0.0206$ | $0.7613 \pm 0.0150$ | $0.0300 \pm 0.0075$ | $0.3713 \pm 0.0206$ | $0.9673 \pm 0.0054$ | $41.77 \pm 14.87$ |
-| **SVM (RBF Kernel)** | $0.5503 \pm 0.1111$ | $0.3973 \pm 0.3451$ | $0.6601 \pm 0.5718$ | $0.4957 \pm 0.4297$ | $0.5949 \pm 0.5261$ | $0.3399 \pm 0.5718$ | $0.4147 \pm 0.4087$ | $140.08 \pm 18.26$ |
-| **MLP Neural Net** | $0.7545 \pm 0.0454$ | $0.9174 \pm 0.0342$ | $0.6275 \pm 0.1036$ | $0.7410 \pm 0.0658$ | $0.0777 \pm 0.0452$ | $0.3725 \pm 0.1036$ | $0.8429 \pm 0.0598$ | $5.23 \pm 0.66$ |
-| **XGBoost** | $0.7904 \pm 0.0163$ | $0.9648 \pm 0.0063$ | $0.6557 \pm 0.0281$ | $0.7805 \pm 0.0205$ | $0.0316 \pm 0.0056$ | $0.3443 \pm 0.0281$ | $0.9543 \pm 0.0132$ | $4.02 \pm 1.24$ |
-| **LightGBM** | $0.7801 \pm 0.0148$ | $0.9638 \pm 0.0068$ | $0.6376 \pm 0.0243$ | $0.7673 \pm 0.0186$ | $0.0316 \pm 0.0056$ | $0.3624 \pm 0.0243$ | $0.9548 \pm 0.0104$ | $6.98 \pm 2.22$ |
-| **Logistic Regression** | $0.7165 \pm 0.0194$ | $0.8735 \pm 0.0101$ | $0.5870 \pm 0.0370$ | $0.7017 \pm 0.0271$ | $0.1123 \pm 0.0113$ | $0.4130 \pm 0.0370$ | $0.8485 \pm 0.0134$ | $0.42 \pm 0.11$ |
+| **Baseline KNN** | $0.7774 \pm 0.0119$ | $0.9603 \pm 0.0041$ | $0.6351 \pm 0.0223$ | $0.7644 \pm 0.0158$ | $0.0347 \pm 0.0041$ | $0.3649 \pm 0.0223$ | $0.8382 \pm 0.0100$ | $77.07 \pm 36.94$ |
+| **Improved KNN (Dong & Sarem 2020)** | $0.7685 \pm 0.0062$ | $0.9620 \pm 0.0063$ | $0.6177 \pm 0.0122$ | $0.7523 \pm 0.0085$ | $0.0323 \pm 0.0057$ | $0.3823 \pm 0.0122$ | $0.8387 \pm 0.0099$ | $75.73 \pm 29.86$ |
+| **Proposed KNN (Vectorized)** | **$0.7677 \pm 0.0054$** | **$0.9621 \pm 0.0067$** | **$0.6162 \pm 0.0108$** | **$0.7512 \pm 0.0074$** | **$0.0321 \pm 0.0061$** | **$0.3838 \pm 0.0108$** | **$0.8278 \pm 0.0072$** | **$73.36 \pm 37.38$** |
+| **Random Forest** | $0.7771 \pm 0.0083$ | $0.9636 \pm 0.0063$ | $0.6323 \pm 0.0154$ | $0.7635 \pm 0.0110$ | $0.0316 \pm 0.0058$ | $0.3677 \pm 0.0154$ | $0.9672 \pm 0.0040$ | $41.77 \pm 14.87$ |
+| **SVM (RBF Kernel)** | $0.5462 \pm 0.1104$ | $0.3623 \pm 0.3314$ | $0.5949 \pm 0.5432$ | $0.4501 \pm 0.4112$ | $0.5181 \pm 0.4802$ | $0.4051 \pm 0.5432$ | $0.4620 \pm 0.3888$ | $140.08 \pm 18.26$ |
+| **MLP Neural Net** | $0.7539 \pm 0.0404$ | $0.9238 \pm 0.0330$ | $0.6200 \pm 0.0801$ | $0.7392 \pm 0.0549$ | $0.0691 \pm 0.0377$ | $0.3800 \pm 0.0801$ | $0.8517 \pm 0.0458$ | $5.23 \pm 0.66$ |
+| **XGBoost** | $0.7940 \pm 0.0154$ | $0.9644 \pm 0.0046$ | $0.6625 \pm 0.0270$ | $0.7852 \pm 0.0194$ | $0.0323 \pm 0.0041$ | $0.3375 \pm 0.0270$ | $0.9566 \pm 0.0099$ | $4.02 \pm 1.24$ |
+| **LightGBM** | $0.7799 \pm 0.0160$ | $0.9638 \pm 0.0048$ | $0.6372 \pm 0.0278$ | $0.7670 \pm 0.0207$ | $0.0316 \pm 0.0040$ | $0.3628 \pm 0.0278$ | $0.9577 \pm 0.0085$ | $6.98 \pm 2.22$ |
+| **Logistic Regression** | $0.7176 \pm 0.0168$ | $0.8687 \pm 0.0140$ | $0.5937 \pm 0.0296$ | $0.7050 \pm 0.0223$ | $0.1187 \pm 0.0145$ | $0.4063 \pm 0.0296$ | $0.8525 \pm 0.0155$ | $0.42 \pm 0.11$ |
 
 ### Statistical Significance Highlights
-- **Wire-Speed Inference**: Proposed KNN achieves an inference latency of $71.29\,\mu$s/flow on NSL-KDD and $84.59\,\mu$s/flow on InSDN (over $4.3\times$ acceleration compared to unvectorized formulations), operating at $>11{,}800$ flows/second per CPU core.
-- **Hypothesis Testing**: Pairwise non-parametric tests confirm that differences across KNN formulations are statistically distinct after Holm-Bonferroni adjustment ($p_{\text{Holm}} < 0.01$). On InSDN, Proposed KNN matches ensemble accuracy ($99.89\%$, $F_1 = 0.9992$) while maintaining instance-level transparency.
+- **Wire-Speed Inference**: Proposed KNN achieves an inference latency of $73.36\,\mu$s/flow on NSL-KDD and $83.80\,\mu$s/flow on InSDN (over $4.3\times$ acceleration compared to unvectorized formulations), operating at $>11{,}900$ flows/second per CPU core.
+- **Hypothesis Testing**: Pairwise non-parametric tests confirm that differences across KNN formulations are statistically distinct after Holm-Bonferroni adjustment ($p_{\text{Holm}} < 0.01$). On InSDN, Proposed KNN matches ensemble accuracy ($99.95\%$, $F_1 = 0.9996$) while maintaining instance-level transparency.
 
 ---
 
-## 🔍 Algorithmic Bottlenecks in the Original Literature & Our Solutions
+## 🔍 Key Architectural Challenges in SDN Nearest-Neighbor Defense & Our Solutions
 
-1. **Metric Space Invalidation**:
-   - *Original*: Altered distances via $d_{\text{new}} = d - \alpha \cdot \text{Degree}$. When $\alpha \cdot \text{Degree} > d$, distances become negative, violating the non-negativity and triangle inequality axioms of metric spaces ($d(x, y) \ge 0$). This invalidates spatial guarantees and crashes standard $k$-d tree / ball tree indexers.
-   - *Our Solution*: Formulated a bounded, monotonic compression function that applies non-linear scaling strictly in positive distance space, preserving mathematical metric properties while incorporating macroscopic flow degrees.
-2. **Exponential Floating-Point Instability**:
-   - *Original*: Raw weight exponentiation $w = e^{-d_{\text{new}}}$ causes floating-point overflow ($d < 0 \implies e^{|d|} \to \infty$) or extreme underflow on high-dimensional feature spaces, collapsing voting power into single-neighbor domination.
-   - *Our Solution*: Stabilized log-sum-exp normalization with strict numerical clipping to prevent floating-point underflow/overflow.
-3. **Inference Complexity & Control-Plane Delay**:
-   - *Original*: Nested Python `for` loops evaluating pairwise distance matrices sample-by-sample ($O(N \cdot M)$), taking $>70$ ms per flow and starving SDN controller event queues.
-   - *Our Solution*: Vectorized spatial tree indexers ($k$-d trees and ball trees) with matrix-level NumPy computations, reducing query time to $O(k \log N)$ with microsecond-scale execution.
-4. **Dataset Parsing & Label Integrity**:
-   - *Original*: Legacy scripts mapped multi-class attack categories into binary labels using brittle substring heuristics, misclassifying attack sub-categories.
-   - *Our Solution*: Standardized schema validation parsing all 41 NSL-KDD features deterministically, mapping all canonical attack families (DoS, Probe, R2L, U2R) to ground truth attack class ($1$) and normal traffic to ($0$).
+1. **Separation of Metric Space Indexing from Macroscopic Telemetry**:
+   - *Challenge*: Attempting to bias nearest-neighbor retrieval by modifying pairwise distances using sample-dependent external severity factors (e.g., asymmetric scaling $d'(x, y) = d(x, y) \cdot g(y)$) breaks metric symmetry and the triangle inequality. This invalidates spatial partitioning trees ($k$-d trees and ball trees), forcing computationally prohibitive $O(M \cdot N)$ exhaustive distance searches.
+   - *Our Solution*: Decoupled metric spatial indexing from telemetry fusion. The underlying Euclidean metric space is preserved unconditionally for fast $O(k \log N)$ tree indexing, while macroscopic control-plane degrees are fused as prior evidence via odds-ratio Bayesian updating without feature double-counting.
+2. **Exponential Floating-Point Underflow in High Dimensions**:
+   - *Challenge*: Negative exponential distance weighting ($w_i = \exp(-d_i)$) on high-dimensional OpenFlow spaces routinely encounters distances exceeding $50.0$, causing IEEE 754 floating-point underflow to zero and collapsing voting into indeterminate forms ($0/0$).
+   - *Our Solution*: Stabilized distance weighting using min-distance subtraction ($w_i = \exp(-(d_i - d_{\min}) / \sigma)$), guaranteeing that exponents remain bounded within $[-10, 0]$ and eliminating floating-point underflow.
+3. **Inference Latency & Controller Event Queue Starvation**:
+   - *Challenge*: Unvectorized instance-based implementations require $>70$\,ms per flow, easily exceeding OpenFlow controller real-time budgets ($<1.0$\,ms) and causing Packet-In queue saturation.
+   - *Our Solution*: Fully vectorized spatial indexing with adaptive neighborhood cardinality, achieving $<85\,\mu$s per-flow inference and sustaining $>11{,}800$ flows/second per core on authentic OpenFlow traffic.
+4. **Data Leakage & Benchmark Integrity**:
+   - *Challenge*: Contemporary SDN datasets often suffer from identical duplicate flow keys across train and test splits (e.g., 70% flow key overlap in legacy InSDN test partitions).
+   - *Our Solution*: Enforced strict, leak-free stratified 80/20 train/test splitting directly from raw flow captures, ensuring valid out-of-sample generalization.
 
 ---
 

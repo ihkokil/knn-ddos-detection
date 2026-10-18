@@ -40,8 +40,9 @@ class ImprovedKNN(StandardKNN):
     """
     
     def __init__(self, k: int = 5, metric: str = 'euclidean',
-                 weights: str = 'exponential'):
+                 weights: str = 'exponential', **kwargs):
         super().__init__(k=k, metric=metric, weights=weights)
+        self.extra_kwargs = kwargs
     
     def predict_proba(self, X: np.ndarray, degrees_test: Optional[np.ndarray] = None) -> np.ndarray:
         """
