@@ -504,9 +504,9 @@ def run_full_pipeline(config: Dict[str, Any] = None) -> Dict[str, Any]:
     trial_results = run_multiple_trials(config, num_trials=5, vary_seed=True)
     
     stats = trial_results.get('stats', {})
-    print(f"  Mean accuracy across 5 trials: {stats.get('accuracy_mean', 0):.3f} ± {stats.get('accuracy_std', 0):.3f}")
-    print(f"  Mean F1-score: {stats.get('f1_mean', 0):.3f} ± {stats.get('f1_std', 0):.3f}")
-    print(f"  Mean AUC-ROC: {stats.get('auc_roc_mean', 0):.3f} ± {stats.get('auc_roc_std', 0):.3f}")
+    print(f"  Mean accuracy across 5 trials: {stats.get('accuracy_mean', 0):.3f} +/- {stats.get('accuracy_std', 0):.3f}")
+    print(f"  Mean F1-score: {stats.get('f1_mean', 0):.3f} +/- {stats.get('f1_std', 0):.3f}")
+    print(f"  Mean AUC-ROC: {stats.get('auc_roc_mean', 0):.3f} +/- {stats.get('auc_roc_std', 0):.3f}")
     
     # Step 4: Save results
     print("\n[Step 4] Saving results...")
@@ -568,8 +568,8 @@ if __name__ == "__main__":
     print("\n  Running 3 trials...")
     trial_agg = run_multiple_trials(base_config, num_trials=3, vary_seed=True)
     stats = trial_agg.get('stats', {})
-    print(f"    Accuracy mean: {stats.get('accuracy_mean', 0):.3f} ± {stats.get('accuracy_std', 0):.3f}")
-    print(f"    F1 mean: {stats.get('f1_mean', 0):.3f} ± {stats.get('f1_std', 0):.3f}")
+    print(f"    Accuracy mean: {stats.get('accuracy_mean', 0):.3f} +/- {stats.get('accuracy_std', 0):.3f}")
+    print(f"    F1 mean: {stats.get('f1_mean', 0):.3f} +/- {stats.get('f1_std', 0):.3f}")
     
     # Compare all methods
     print("\n  Comparing all three methods...")

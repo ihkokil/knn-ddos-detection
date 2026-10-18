@@ -96,14 +96,14 @@ def parse_args():
     parser.add_argument(
         '--dataset', 
         type=str, 
-        choices=['NSL-KDD', 'CIC-DDoS2019', 'synthetic'],
+        choices=['NSL-KDD', 'CIC-DDoS2019', 'InSDN', 'synthetic'],
         default=None,
         help='Dataset to use (legacy, use --datasets for full_eval)'
     )
     parser.add_argument(
         '--datasets', 
         nargs='+',
-        choices=['NSL-KDD', 'CIC-DDoS2019', 'both'],
+        choices=['NSL-KDD', 'CIC-DDoS2019', 'InSDN', 'both', 'all'],
         default=None,
         help='Datasets for comprehensive evaluation (can specify multiple)'
     )
@@ -590,6 +590,8 @@ def phase_full_eval(config: Dict[str, Any], args):
         datasets = ["NSL-KDD"]
     if "both" in datasets:
         datasets = ["NSL-KDD", "CIC-DDoS2019"]
+    if "all" in datasets:
+        datasets = ["NSL-KDD", "InSDN"]
     
     # Create evaluation config - use base data root without dataset subdirectory
     base_data_root = args.dataset_path or config.get('dataset_path', 'data/raw')

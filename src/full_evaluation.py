@@ -80,6 +80,8 @@ class FullEvaluationConfig:
     # Trial settings
     num_trials: int = 30
     random_seeds: List[int] = field(default_factory=lambda: list(range(42, 42+30)))
+    max_train_samples: Optional[int] = 8000
+    max_test_samples: Optional[int] = 2500
     
     # KNN settings
     k_values: List[int] = field(default_factory=lambda: [1, 3, 5, 7, 10, 15, 20])
@@ -128,15 +130,13 @@ Q1EvaluationConfig = FullEvaluationConfig
 
 def load_dataset_with_schema(dataset_name: str, config: Q1EvaluationConfig) -> Dict[str, Any]:
     """
-    Load dataset using explicit schema-based feature engineering.
+    Load dataset using explicit schema-based feature engineering with strict zero-leakage.
     """
     print(f"\n{'='*60}")
-    print(f"Loading {dataset_name} with explicit schema")
+    print(f"Loading {dataset_name} with explicit schema (leak-free)")
     print(f"{'='*60}")
     
     schema = get_dataset_schema(dataset_name)
-    
-    # Get data paths
     downloader = DatasetDownloader(config.data_root)
     
     if dataset_name == "NSL-KDD":
@@ -162,10 +162,51 @@ def load_dataset_with_schema(dataset_name: str, config: Q1EvaluationConfig) -> D
         print(f"Schema compliance: {validation['compliance_score']:.2%}")
         if validation['missing_columns']:
             print(f"Missing columns: {validation['missing_columns']}")
+            
+        from src.feature_schema import engineer_features_nsl_kdd
+        X_train, y_train, feature_names, _, y_attack_train, _ = engineer_features_nsl_kdd(
+            train_df, schema, include_entropy=False, include_degree=False
+        )
+        X_test, y_test, _, _, y_attack_test, _ = engineer_features_nsl_kdd(
+            test_df, schema, include_entropy=False, include_degree=False
+        )
         
-        # Combine for feature engineering
-        full_df = pd.concat([train_df, test_df], ignore_index=True)
+        deg_comp = DegreeOfAttackComputer(method="base_paper")
+        deg_comp.fit(X_train, feature_names=feature_names)
+        degrees_train = deg_comp.transform(X_train, feature_names=feature_names)
+        degrees_test = deg_comp.transform(X_test, feature_names=feature_names)
+
+    elif dataset_name.upper() in ["INSDN", "IN-SDN"]:
+        data_dir = Path(config.data_root) / "insdn"
+        train_path = data_dir / "insdn_ddos_binary_0n1d_train_smote.csv"
+        test_path = data_dir / "insdn_test_labeled.csv"
         
+        if not train_path.exists() or not test_path.exists():
+            if config.download_datasets:
+                print("InSDN not found, downloading and preparing...")
+                downloader.download_insdn("insdn")
+            else:
+                raise FileNotFoundError(f"InSDN not found at {data_dir}")
+                
+        train_df = pd.read_csv(train_path)
+        test_df = pd.read_csv(test_path)
+        
+        validation = validate_schema_compliance(train_df, "InSDN")
+        print(f"Schema compliance: {validation['compliance_score']:.2%}")
+        
+        from src.feature_schema import engineer_features_insdn
+        X_train, y_train, feature_names, _, y_attack_train = engineer_features_insdn(
+            train_df, schema, include_entropy=False, include_degree=False
+        )
+        X_test, y_test, _, _, y_attack_test = engineer_features_insdn(
+            test_df, schema, include_entropy=False, include_degree=False
+        )
+        
+        deg_comp = DegreeOfAttackComputer(method="proposed")
+        deg_comp.fit(X_train, feature_names=feature_names)
+        degrees_train = deg_comp.transform(X_train, feature_names=feature_names)
+        degrees_test = deg_comp.transform(X_test, feature_names=feature_names)
+
     elif dataset_name == "CIC-DDoS2019":
         data_dir = Path(config.data_root) / "cicddos2019"
         train_path = data_dir / "Wednesday_workingHours_pcap_ISCX.csv"
@@ -183,70 +224,57 @@ def load_dataset_with_schema(dataset_name: str, config: Q1EvaluationConfig) -> D
         train_df = pd.read_csv(train_path, nrows=100000)
         test_df = pd.read_csv(test_path, nrows=100000)
         
-        # Validate schema
         validation = validate_schema_compliance(train_df, dataset_name)
         print(f"Schema compliance: {validation['compliance_score']:.2%}")
         
-        full_df = pd.concat([train_df, test_df], ignore_index=True)
-    
+        from src.feature_schema import engineer_features_cicddos2019
+        X_train, y_train, feature_names, _, y_attack_train = engineer_features_cicddos2019(
+            train_df, schema, include_degree=False
+        )
+        X_test, y_test, _, _, y_attack_test = engineer_features_cicddos2019(
+            test_df, schema, include_degree=False
+        )
+        deg_comp = DegreeOfAttackComputer(method="proposed")
+        deg_comp.fit(X_train, feature_names=feature_names)
+        degrees_train = deg_comp.transform(X_train, feature_names=feature_names)
+        degrees_test = deg_comp.transform(X_test, feature_names=feature_names)
+        
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
+        
+    X_train_full, y_train_full = X_train, y_train
+    X_test_full, y_test_full = X_test, y_test
     
-    # Engineer features using explicit schema
-    print("Engineering features with explicit schema...")
-    fe_result = engineer_features_universal(full_df, dataset_name,
-                                             include_entropy=config.include_entropy,
-                                             include_degree=True)
-    
-    X = fe_result["X"]
-    y_binary = fe_result["y_binary"]
-    feature_names = fe_result["feature_names"]
-    degree_values = fe_result["degree_values"]
-    
-    # Get attack-type labels
-    if dataset_name == "CIC-DDoS2019":
-        y_attack_type = fe_result.get("y_attack_type", np.zeros(len(y_binary)))
-    else:
-        y_attack_type = fe_result.get("y_attack_category", np.zeros(len(y_binary)))
-    
-    # Split using group/time-aware strategy
-    if config.use_group_aware_split or config.use_time_aware_split:
-        print("Applying group/time-aware split...")
-        # Use splitter directly to get indices
-        splitter = create_splitter(dataset_name, test_size=config.test_size, 
-                                    random_state=42, n_splits=1)
-        splits = splitter.split(X, y_binary, df=full_df)
-        train_idx, test_idx = splits[0]
-    else:
+    if config.max_train_samples is not None and len(X_train) > config.max_train_samples:
         from sklearn.model_selection import train_test_split
-        train_idx, test_idx = train_test_split(
-            np.arange(len(X)), test_size=config.test_size, 
-            random_state=42, stratify=y_binary
+        X_train, _, y_train, _ = train_test_split(
+            X_train, y_train, train_size=config.max_train_samples,
+            random_state=42, stratify=y_train
         )
-    
-    X_train, X_test = X[train_idx], X[test_idx]
-    y_train, y_test = y_binary[train_idx], y_binary[test_idx]
-    degrees_train = degree_values[train_idx]
-    degrees_test = degree_values[test_idx]
-    y_attack_train = y_attack_type[train_idx]
-    y_attack_test = y_attack_type[test_idx]
-    
-    # Verify no leakage
-    if config.use_group_aware_split:
-        # Would need original dataframe split
-        pass
-    
-    print(f"Data loaded: Train={len(X_train)}, Test={len(X_test)}")
+    if config.max_test_samples is not None and len(X_test) > config.max_test_samples:
+        from sklearn.model_selection import train_test_split
+        X_test, _, y_test, _ = train_test_split(
+            X_test, y_test, train_size=config.max_test_samples,
+            random_state=42, stratify=y_test
+        )
+        
+    deg_comp.fit(X_train, feature_names=feature_names)
+    degrees_train = deg_comp.transform(X_train, feature_names=feature_names)
+    degrees_test = deg_comp.transform(X_test, feature_names=feature_names)
+        
+    print(f"Data loaded: Train={len(X_train)} (full: {len(X_train_full)}), Test={len(X_test)} (full: {len(X_test_full)})")
     print(f"Features: {len(feature_names)}")
     print(f"Train class dist: {np.bincount(y_train)}")
     print(f"Test class dist: {np.bincount(y_test)}")
-    print(f"Attack types in test: {np.bincount(y_attack_test)}")
     
     return {
         "X_train": X_train, "X_test": X_test,
         "y_train": y_train, "y_test": y_test,
+        "X_train_full": X_train_full, "X_test_full": X_test_full,
+        "y_train_full": y_train_full, "y_test_full": y_test_full,
         "degrees_train": degrees_train, "degrees_test": degrees_test,
-        "y_attack_train": y_attack_train, "y_attack_test": y_attack_test,
+        "y_attack_train": y_attack_train[:len(X_train)] if y_attack_train is not None else None,
+        "y_attack_test": y_attack_test[:len(X_test)] if y_attack_test is not None else None,
         "feature_names": feature_names,
         "schema": schema,
         "dataset_name": dataset_name,
@@ -421,20 +449,24 @@ def evaluate_calibration_and_latency(models: Dict[str, Any], X_test: np.ndarray,
 # =============================================================================
 
 def run_multi_trial_evaluation(data: Dict[str, Any], config: Q1EvaluationConfig) -> Dict[str, Any]:
-    """Run multiple independent trials with different random seeds."""
+    """Run multiple independent trials with different random seeds (strictly leak-free)."""
     print(f"\n{'='*60}")
     print(f"Running {config.num_trials} independent trials")
     print(f"{'='*60}")
     
-    X = np.vstack([data["X_train"], data["X_test"]])
-    y = np.concatenate([data["y_train"], data["y_test"]])
-    degrees = np.concatenate([data["degrees_train"], data["degrees_test"]])
-    y_attack = np.concatenate([data["y_attack_train"], data["y_attack_test"]])
+    X_train_full = data.get("X_train_full", data["X_train"])
+    y_train_full = data.get("y_train_full", data["y_train"])
+    X_test_full = data.get("X_test_full", data["X_test"])
+    y_test_full = data.get("y_test_full", data["y_test"])
+    feature_names = data.get("feature_names", None)
+    deg_method = "base_paper" if data["dataset_name"] == "NSL-KDD" else "proposed"
+    
+    train_sub_max = config.max_train_samples or 8000
+    test_sub_max = config.max_test_samples or 2500
     
     all_trial_results = {
         'baseline': [], 'improved': [], 'proposed': []
     }
-    
     all_baseline_results = {name: [] for name in config.baseline_names}
     
     for trial_idx in range(config.num_trials):
@@ -443,33 +475,44 @@ def run_multi_trial_evaluation(data: Dict[str, Any], config: Q1EvaluationConfig)
         
         print(f"\n  Trial {trial_idx+1}/{config.num_trials} (seed={seed})...")
         
-        # Split
-        if config.use_group_aware_split or config.use_time_aware_split:
-            split_result = split_dataset_aware(
-                X, y, data["dataset_name"], 
-                df=pd.DataFrame(X),  # Simplified
-                test_size=config.test_size, random_state=seed, n_splits=1
+        from sklearn.model_selection import train_test_split
+        if len(X_train_full) > train_sub_max:
+            X_tr, _, y_tr, _ = train_test_split(
+                X_train_full, y_train_full, train_size=train_sub_max,
+                random_state=seed, stratify=y_train_full
             )
-            train_idx, test_idx = split_result[0], split_result[1]
         else:
-            from sklearn.model_selection import train_test_split
-            train_idx, test_idx = train_test_split(
-                np.arange(len(X)), test_size=config.test_size,
-                random_state=seed, stratify=y
+            X_tr, y_tr = X_train_full, y_train_full
+            
+        if len(X_test_full) > test_sub_max:
+            X_te, _, y_te, _ = train_test_split(
+                X_test_full, y_test_full, train_size=test_sub_max,
+                random_state=seed, stratify=y_test_full
             )
-        
-        X_tr, X_te = X[train_idx], X[test_idx]
-        y_tr, y_te = y[train_idx], y[test_idx]
-        deg_tr, deg_te = degrees[train_idx], degrees[test_idx]
-        atk_tr, atk_te = y_attack[train_idx], y_attack[test_idx]
+        else:
+            X_te, y_te = X_test_full, y_test_full
+            
+        # Fit degree computer STRICTLY on training split
+        deg_comp = DegreeOfAttackComputer(method=deg_method)
+        deg_comp.fit(X_tr, feature_names=feature_names)
+        deg_tr = deg_comp.transform(X_tr, feature_names=feature_names)
+        deg_te = deg_comp.transform(X_te, feature_names=feature_names)
         
         # Train KNN models
+        t_fit = time.perf_counter()
         knn_models = train_knn_models(X_tr, y_tr, deg_tr, config)
+        fit_time_knn = time.perf_counter() - t_fit
         
         # Evaluate KNN
         for name, model in knn_models.items():
+            t_infer = time.perf_counter()
             y_pred = model.predict(X_te)
-            y_proba = model.predict_proba(X_te)
+            if name in ['improved', 'proposed']:
+                y_proba = model.predict_proba(X_te, degrees_test=deg_te)
+            else:
+                y_proba = model.predict_proba(X_te)
+            infer_duration = time.perf_counter() - t_infer
+            
             if y_proba.ndim == 1:
                 y_proba = np.column_stack([1 - y_proba, y_proba])
             
@@ -477,6 +520,9 @@ def run_multi_trial_evaluation(data: Dict[str, Any], config: Q1EvaluationConfig)
             metrics = evaluator.evaluate_classification(y_te, y_pred, y_proba, deg_te)
             metrics['trial'] = trial_idx
             metrics['seed'] = seed
+            metrics['fit_time_s'] = fit_time_knn
+            metrics['inference_time'] = infer_duration
+            metrics['latency_us_per_flow'] = (infer_duration / len(X_te)) * 1e6
             all_trial_results[name].append(metrics)
         
         # Evaluate baselines
@@ -491,11 +537,14 @@ def run_multi_trial_evaluation(data: Dict[str, Any], config: Q1EvaluationConfig)
                     all_baseline_results[name].append(metrics)
         
         # Progress
-        if trial_idx % 5 == 0:
+        if (trial_idx + 1) % 5 == 0 or trial_idx == 0:
             for knn_name in ['baseline', 'improved', 'proposed']:
                 if all_trial_results[knn_name]:
                     accs = [r['accuracy'] for r in all_trial_results[knn_name]]
-                    print(f"    {knn_name}: Acc={np.mean(accs):.4f}±{np.std(accs):.4f}")
+                    f1s = [r['f1'] for r in all_trial_results[knn_name]]
+                    lats = [r.get('latency_us_per_flow', 0) for r in all_trial_results[knn_name]]
+                    print(f"    {knn_name:10s}: Acc={np.mean(accs):.4f}+/-{np.std(accs):.4f}, "
+                          f"F1={np.mean(f1s):.4f}+/-{np.std(f1s):.4f}, Latency={np.mean(lats):.1f}us")
     
     return {
         'knn_trials': all_trial_results,
@@ -514,7 +563,8 @@ def aggregate_trial_results(trial_results: Dict[str, List]) -> Dict[str, Dict]:
         agg = {'method': method, 'num_trials': len(trials)}
         
         metric_keys = ['accuracy', 'precision', 'recall', 'f1', 'fpr', 'fnr', 
-                       'detection_rate', 'auc_roc', 'training_time', 'inference_time']
+                       'detection_rate', 'auc_roc', 'training_time', 'inference_time',
+                       'latency_us_per_flow', 'fit_time_s']
         
         for key in metric_keys:
             values = [t.get(key, 0) for t in trials if key in t]
@@ -612,7 +662,7 @@ def run_statistical_analysis(trial_results: Dict[str, Any], config: Q1Evaluation
                   "*" if row.get('p_corrected', 1) < 0.05 else "ns"
             print(f"  {row['method_1']:20s} vs {row['method_2']:20s}: "
                   f"p={row.get('p_corrected', row['p_value']):.4f} {sig}, "
-                  f"Δ={row['mean_diff']:+.4f}, d={row['cohens_d']:.3f}")
+                  f"Diff={row['mean_diff']:+.4f}, d={row['cohens_d']:.3f}")
     
     # Friedman test
     print("\nFriedman test (omnibus):")
@@ -631,7 +681,7 @@ def run_statistical_analysis(trial_results: Dict[str, Any], config: Q1Evaluation
             friedman = friedman_test(*trial_arrays)
             if 'error' not in friedman:
                 friedman_results[metric] = friedman
-                print(f"  {metric}: χ²={friedman['statistic']:.3f}, p={friedman['p_value']:.4f}")
+                print(f"  {metric}: chi2={friedman['statistic']:.3f}, p={friedman['p_value']:.4f}")
     
     # Stability analysis
     print("\nTrial stability (CV = std/mean):")
@@ -849,6 +899,45 @@ def run_full_evaluation(config: FullEvaluationConfig = None) -> Dict[str, Any]:
     
     print(f"Final results saved to: {final_output}")
     
+    # Export CSV tables for paper reproduction
+    try:
+        summary_rows = []
+        for d_name, d_res in all_results.items():
+            if 'knn_aggregated' not in d_res:
+                continue
+            for group_key in ['knn_aggregated', 'baseline_aggregated']:
+                for m_name, agg in d_res.get(group_key, {}).items():
+                    acc_m, acc_s = agg.get('accuracy_mean', 0.0), agg.get('accuracy_std', 0.0)
+                    prec_m, prec_s = agg.get('precision_mean', 0.0), agg.get('precision_std', 0.0)
+                    rec_m, rec_s = agg.get('recall_mean', 0.0), agg.get('recall_std', 0.0)
+                    f1_m, f1_s = agg.get('f1_mean', 0.0), agg.get('f1_std', 0.0)
+                    fpr_m, fpr_s = agg.get('fpr_mean', 0.0), agg.get('fpr_std', 0.0)
+                    fnr_m, fnr_s = agg.get('fnr_mean', 0.0), agg.get('fnr_std', 0.0)
+                    auc_m, auc_s = agg.get('auc_roc_mean', 0.0), agg.get('auc_roc_std', 0.0)
+                    lat_m, lat_s = agg.get('latency_us_per_flow_mean', 0.0), agg.get('latency_us_per_flow_std', 0.0)
+                    summary_rows.append({
+                        'dataset': d_name,
+                        'Model': m_name,
+                        'accuracy_mean': acc_m, 'accuracy_std': acc_s, 'accuracy_display': f"{acc_m:.4f} +/- {acc_s:.4f}",
+                        'precision_mean': prec_m, 'precision_std': prec_s, 'precision_display': f"{prec_m:.4f} +/- {prec_s:.4f}",
+                        'recall_mean': rec_m, 'recall_std': rec_s, 'recall_display': f"{rec_m:.4f} +/- {rec_s:.4f}",
+                        'f1_mean': f1_m, 'f1_std': f1_s, 'f1_display': f"{f1_m:.4f} +/- {f1_s:.4f}",
+                        'fpr_mean': fpr_m, 'fpr_std': fpr_s, 'fpr_display': f"{fpr_m:.4f} +/- {fpr_s:.4f}",
+                        'fnr_mean': fnr_m, 'fnr_std': fnr_s, 'fnr_display': f"{fnr_m:.4f} +/- {fnr_s:.4f}",
+                        'auc_roc_mean': auc_m, 'auc_roc_std': auc_s, 'auc_roc_display': f"{auc_m:.4f} +/- {auc_s:.4f}",
+                        'latency_us_per_flow_mean': lat_m, 'latency_us_per_flow_std': lat_s, 'latency_us_per_flow_display': f"{lat_m:.2f} +/- {lat_s:.2f}"
+                    })
+        if summary_rows:
+            summary_df = pd.DataFrame(summary_rows)
+            summary_path = output_dir / "benchmark_summary.csv"
+            summary_df.to_csv(summary_path, index=False)
+            top_results = Path("results")
+            top_results.mkdir(parents=True, exist_ok=True)
+            summary_df.to_csv(top_results / "benchmark_summary.csv", index=False)
+            print(f"Benchmark summary saved to {summary_path}")
+    except Exception as e:
+        print(f"Warning: Failed to export summary CSV: {e}")
+        
     return all_results
 
 
@@ -923,7 +1012,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Comprehensive DDoS Detection Evaluation")
     parser.add_argument("--datasets", nargs="+", default=["NSL-KDD"],
-                       choices=["NSL-KDD", "CIC-DDoS2019", "both"])
+                       choices=["NSL-KDD", "CIC-DDoS2019", "InSDN", "both", "all"])
     parser.add_argument("--trials", type=int, default=10)
     parser.add_argument("--no-baselines", action="store_true")
     parser.add_argument("--no-ablations", action="store_true")
@@ -943,6 +1032,8 @@ if __name__ == "__main__":
     datasets = args.datasets
     if "both" in datasets:
         datasets = ["NSL-KDD", "CIC-DDoS2019"]
+    if "all" in datasets:
+        datasets = ["NSL-KDD", "InSDN"]
     
     # Create config
     config = Q1EvaluationConfig(
@@ -976,13 +1067,13 @@ if __name__ == "__main__":
         if 'knn_aggregated' in result:
             print("  KNN Methods (aggregated):")
             for method, metrics in result['knn_aggregated'].items():
-                print(f"    {method:15s}: Acc={metrics.get('accuracy_mean',0):.4f}±{metrics.get('accuracy_std',0):.4f}, "
-                      f"F1={metrics.get('f1_mean',0):.4f}±{metrics.get('f1_std',0):.4f}, "
-                      f"AUC={metrics.get('auc_roc_mean',0):.4f}±{metrics.get('auc_roc_std',0):.4f}")
+                print(f"    {method:15s}: Acc={metrics.get('accuracy_mean',0):.4f}+/-{metrics.get('accuracy_std',0):.4f}, "
+                      f"F1={metrics.get('f1_mean',0):.4f}+/-{metrics.get('f1_std',0):.4f}, "
+                      f"AUC={metrics.get('auc_roc_mean',0):.4f}+/-{metrics.get('auc_roc_std',0):.4f}")
         
         if 'baseline_aggregated' in result:
             print("  Baselines (aggregated):")
             for method, metrics in result['baseline_aggregated'].items():
-                print(f"    {method:20s}: Acc={metrics.get('accuracy_mean',0):.4f}±{metrics.get('accuracy_std',0):.4f}, "
-                      f"F1={metrics.get('f1_mean',0):.4f}±{metrics.get('f1_std',0):.4f}, "
-                      f"AUC={metrics.get('auc_roc_mean',0):.4f}±{metrics.get('auc_roc_std',0):.4f}")
+                print(f"    {method:20s}: Acc={metrics.get('accuracy_mean',0):.4f}+/-{metrics.get('accuracy_std',0):.4f}, "
+                      f"F1={metrics.get('f1_mean',0):.4f}+/-{metrics.get('f1_std',0):.4f}, "
+                      f"AUC={metrics.get('auc_roc_mean',0):.4f}+/-{metrics.get('auc_roc_std',0):.4f}")

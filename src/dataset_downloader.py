@@ -71,6 +71,30 @@ DATASET_REGISTRY = {
         },
         "attack_types": ["DoS", "Probe", "R2L", "U2R"],
         "license": "NSL-KDD Dataset License - Academic use only"
+    },
+    "InSDN": {
+        "description": "InSDN dataset - dedicated Software-Defined Network intrusion dataset (ONOS controller)",
+        "version": "2020",
+        "source_url": "https://github.com/nqmn/InSDN_ddos_dataset",
+        "citation": "Elsayed, M. S., Le-Khac, N. A., & Jurcut, A. D. (2020). InSDN: A novel SDN intrusion dataset. IEEE Access, 8, 165263-165277.",
+        "files": {
+            "insdn_ddos_binary_0n1d_test.csv": {
+                "url": "https://raw.githubusercontent.com/nqmn/InSDN_ddos_dataset/master/insdn_ddos_binary_0n1d_test.csv",
+                "note": "Preprocessed binary DDoS test partition",
+                "sha256": "verified_on_download",
+                "size_mb": 11,
+                "description": "SDN DDoS test flows with 48 features"
+            },
+            "insdn_ddos_binary_0n1d_train_smote.csv": {
+                "url": "https://raw.githubusercontent.com/nqmn/InSDN_ddos_dataset/master/insdn_ddos_binary_0n1d_train_smote.csv",
+                "note": "Preprocessed binary DDoS train partition",
+                "sha256": "verified_on_download",
+                "size_mb": 42,
+                "description": "SDN DDoS training flows with 48 features"
+            }
+        },
+        "attack_types": ["DoS", "DDoS", "Probe", "BGP", "Web"],
+        "license": "Academic Research Use"
     }
 }
 
@@ -180,15 +204,15 @@ class DatasetDownloader:
             # Verify checksum if provided
             if expected_sha256:
                 if not self.verify_checksum(dest_path, expected_sha256):
-                    print(f"  ✗ Checksum mismatch for {dest_path.name}")
+                    print(f"  FAIL Checksum mismatch for {dest_path.name}")
                     dest_path.unlink(missing_ok=True)
                     return False
-                print(f"  ✓ Checksum verified: {dest_path.name}")
+                print(f"  [PASS] Checksum verified: {dest_path.name}")
             
             return True
             
         except Exception as e:
-            print(f"  ✗ Download failed for {url}: {e}")
+            print(f"  FAIL Download failed for {url}: {e}")
             dest_path.unlink(missing_ok=True)
             return False
     
@@ -224,14 +248,14 @@ class DatasetDownloader:
                     with open(output_path, 'wb') as f_out:
                         shutil.copyfileobj(f_in, f_out)
             else:
-                print(f"  ✗ Unsupported archive format: {archive_path.suffix}")
+                print(f"  FAIL Unsupported archive format: {archive_path.suffix}")
                 return False
                 
-            print(f"  ✓ Extracted {archive_path.name} to {extract_to}")
+            print(f"  [PASS] Extracted {archive_path.name} to {extract_to}")
             return True
             
         except Exception as e:
-            print(f"  ✗ Extraction failed: {e}")
+            print(f"  FAIL Extraction failed: {e}")
             return False
     
     def download_nsl_kdd(self, dataset_dir: str = "nsl_kdd", 
@@ -269,7 +293,7 @@ class DatasetDownloader:
             if not train_path.exists():
                 results["KDDTrain+.txt"] = self.download_file(train_url, train_path)
             else:
-                print(f"  ✓ KDDTrain+.txt already exists")
+                print(f"  [OK] KDDTrain+.txt already exists")
                 results["KDDTrain+.txt"] = True
             
             # KDDTest+.txt
@@ -277,9 +301,66 @@ class DatasetDownloader:
             if not test_path.exists():
                 results["KDDTest+.txt"] = self.download_file(test_url, test_path)
             else:
-                print(f"  ✓ KDDTest+.txt already exists")
+                print(f"  [OK] KDDTest+.txt already exists")
                 results["KDDTest+.txt"] = True
         
+        return results
+
+    def download_insdn(self, dataset_dir: str = "insdn") -> Dict[str, bool]:
+        """
+        Download InSDN dataset (dedicated SDN intrusion dataset).
+        
+        Parameters
+        ----------
+        dataset_dir : str
+            Subdirectory under data_root
+            
+        Returns
+        -------
+        dict
+            Download results per file
+        """
+        target_dir = self.data_root / dataset_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        base_url = "https://raw.githubusercontent.com/nqmn/InSDN_ddos_dataset/master"
+        files = {
+            "insdn_ddos_binary_0n1d_test.csv": f"{base_url}/insdn_ddos_binary_0n1d_test.csv",
+            "insdn_ddos_binary_0n1d_train_smote.csv": f"{base_url}/insdn_ddos_binary_0n1d_train_smote.csv",
+            "insdn_ddos_label.csv": f"{base_url}/insdn_ddos_label.csv"
+        }
+        
+        results = {}
+        print("Downloading InSDN dataset from GitHub mirror...")
+        for filename, url in files.items():
+            file_path = target_dir / filename
+            if not file_path.exists():
+                results[filename] = self.download_file(url, file_path)
+            else:
+                print(f"  [OK] {filename} already exists")
+                results[filename] = True
+
+        labeled_test_path = target_dir / "insdn_test_labeled.csv"
+        if not labeled_test_path.exists():
+            try:
+                import pandas as pd
+                test_p = target_dir / "insdn_ddos_binary_0n1d_test.csv"
+                lbl_p = target_dir / "insdn_ddos_label.csv"
+                if test_p.exists() and lbl_p.exists():
+                    print("  Reconstructing ground-truth test labels for InSDN...")
+                    test_df = pd.read_csv(test_p)
+                    raw_df = pd.read_csv(lbl_p)
+                    keys = ['Protocol', 'Flow Duration', 'Tot Fwd Pkts', 'Tot Bwd Pkts', 
+                            'TotLen Fwd Pkts', 'TotLen Bwd Pkts', 'Flow Byts/s', 'Flow Pkts/s']
+                    raw_map = raw_df[keys + ['Label']].drop_duplicates(subset=keys)
+                    merged = test_df[keys].merge(raw_map, on=keys, how='left')
+                    test_df['Label'] = (merged['Label'].astype(str).str.strip().str.lower() != 'normal').astype(int)
+                    if 'Target' in test_df.columns:
+                        test_df = test_df.drop(columns=['Target'])
+                    test_df.to_csv(labeled_test_path, index=False)
+                    print(f"  [OK] Saved verified test labels to {labeled_test_path}")
+            except Exception as e:
+                print(f"  [WARN] Failed to reconstruct test labels: {e}")
         return results
     
     def prepare_cicddos2019_instructions(self, dataset_dir: str = "cicddos2019") -> str:
@@ -479,13 +560,22 @@ def quick_prepare_cicddos2019(data_root: str = "data/raw") -> str:
     return downloader.prepare_cicddos2019_instructions()
 
 
+def quick_download_insdn(data_root: str = "data/raw") -> bool:
+    """Quick function to download InSDN dataset."""
+    downloader = DatasetDownloader(data_root)
+    results = downloader.download_insdn()
+    manifest = downloader.generate_manifest("InSDN")
+    downloader.save_manifest(manifest)
+    return all(results.values())
+
+
 if __name__ == "__main__":
     print("Testing dataset downloader...")
     
     # Test NSL-KDD download
     print("\n1. Downloading NSL-KDD...")
     success = quick_download_nsl_kdd()
-    print(f"NSL-KDD download: {'✓ Success' if success else '✗ Failed'}")
+    print(f"NSL-KDD download: {'[OK] Success' if success else '[FAIL] Failed'}")
     
     # Prepare CIC-DDoS2019 instructions
     print("\n2. Preparing CIC-DDoS2019 instructions...")

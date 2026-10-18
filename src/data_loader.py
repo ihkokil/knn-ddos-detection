@@ -113,6 +113,105 @@ def load_nsl_kdd(dataset_path: str = None,
     return X_train, y_train, X_test, y_test, feature_cols
 
 
+def load_insdn(dataset_path: str = None,
+               subsample_size: Optional[int] = None,
+               random_seed: int = 42) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[str]]]:
+    """
+    Load the InSDN dataset (dedicated Software-Defined Network intrusion dataset).
+    
+    Parameters
+    ----------
+    dataset_path : str, optional
+        Path to the InSDN dataset directory.
+    subsample_size : int, optional
+        Stratified subsample size for rapid multi-trial benchmarks.
+    random_seed : int, default=42
+        Random state for subsampling.
+        
+    Returns
+    -------
+    tuple
+        (X_train, y_train, X_test, y_test, feature_names)
+    """
+    if dataset_path is None:
+        dataset_path = _resolve_dataset_path(None, "insdn")
+    else:
+        dataset_path = _resolve_dataset_path(dataset_path, "insdn")
+        
+    train_path = os.path.join(dataset_path, "insdn_ddos_binary_0n1d_train_smote.csv")
+    test_path = os.path.join(dataset_path, "insdn_test_labeled.csv")
+    raw_test_path = os.path.join(dataset_path, "insdn_ddos_binary_0n1d_test.csv")
+    raw_label_path = os.path.join(dataset_path, "insdn_ddos_label.csv")
+    
+    # Auto-reconstruct test labels if insdn_test_labeled.csv does not exist yet
+    if not os.path.exists(test_path) and os.path.exists(raw_test_path) and os.path.exists(raw_label_path):
+        try:
+            print("InSDN: Reconstructing ground-truth test labels...")
+            test_df = pd.read_csv(raw_test_path)
+            raw_df = pd.read_csv(raw_label_path)
+            keys = ['Protocol', 'Flow Duration', 'Tot Fwd Pkts', 'Tot Bwd Pkts', 
+                    'TotLen Fwd Pkts', 'TotLen Bwd Pkts', 'Flow Byts/s', 'Flow Pkts/s']
+            raw_map = raw_df[keys + ['Label']].drop_duplicates(subset=keys)
+            merged = test_df[keys].merge(raw_map, on=keys, how='left')
+            test_df['Label'] = (merged['Label'].astype(str).str.strip().str.lower() != 'normal').astype(int)
+            if 'Target' in test_df.columns:
+                test_df = test_df.drop(columns=['Target'])
+            test_df.to_csv(test_path, index=False)
+            print(f"InSDN: Saved verified test labels to {test_path}")
+        except Exception as e:
+            print(f"Error reconstructing InSDN test labels: {e}")
+            
+    if not os.path.exists(train_path) or not os.path.exists(test_path):
+        if os.path.exists(raw_label_path):
+            print(f"InSDN: Loading from {raw_label_path} with 80/20 train/test split...")
+            df = pd.read_csv(raw_label_path)
+            y = (df['Label'].astype(str).str.strip().str.lower() != 'normal').astype(int).values
+            feature_cols = [c for c in df.columns if c not in ['Label', 'Target']]
+            X = df[feature_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0).values
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, stratify=y, random_state=random_seed
+            )
+            return X_train, y_train, X_test, y_test, feature_cols
+            
+        print(f"InSDN dataset not found at {dataset_path}")
+        return None
+        
+    try:
+        train_df = pd.read_csv(train_path)
+        test_df = pd.read_csv(test_path)
+    except Exception as e:
+        print(f"Error loading InSDN CSVs: {e}")
+        return None
+        
+    feature_cols = [c for c in train_df.columns if c not in ['Label', 'Target'] and c in test_df.columns]
+    
+    y_train = train_df['Label'].astype(int).values
+    y_test = test_df['Label'].astype(int).values
+    
+    numeric_tr = train_df[feature_cols].apply(pd.to_numeric, errors='coerce')
+    numeric_te = test_df[feature_cols].apply(pd.to_numeric, errors='coerce')
+    
+    X_train = np.nan_to_num(numeric_tr.values.astype(float), nan=0.0, posinf=0.0, neginf=0.0)
+    X_test = np.nan_to_num(numeric_te.values.astype(float), nan=0.0, posinf=0.0, neginf=0.0)
+    
+    # Stratified subsampling if requested
+    if subsample_size is not None and subsample_size < len(X_train):
+        test_sub_size = min(len(X_test), max(1000, int(subsample_size * len(X_test) / len(X_train))))
+        X_train, _, y_train, _ = train_test_split(
+            X_train, y_train, train_size=subsample_size, stratify=y_train, random_state=random_seed
+        )
+        if test_sub_size < len(X_test):
+            X_test, _, y_test, _ = train_test_split(
+                X_test, y_test, train_size=test_sub_size, stratify=y_test, random_state=random_seed
+            )
+            
+    print(f"InSDN loaded: {len(X_train)} training samples, {len(X_test)} test samples")
+    print(f"  Training class distribution: {Counter(y_train)}")
+    print(f"  Test class distribution: {Counter(y_test)}")
+    
+    return X_train, y_train, X_test, y_test, feature_cols
+
+
 def load_cicddos2019(dataset_path: str = None) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[str]]]:
     """
     Load the CIC-DDoS2019 dataset.
@@ -242,6 +341,15 @@ def load_dataset(config: dict = None) -> dict:
             use_20percent=use_20percent,
             subsample_size=subsample_size,
             encode_categorical=True,
+            random_seed=seed
+        )
+        if data is not None:
+            result['X_train'], result['y_train'], result['X_test'], result['y_test'], result['feature_names'] = data
+            
+    elif dataset_name.upper() in ['INSDN', 'IN-SDN']:
+        data = load_insdn(
+            dataset_path=dataset_path,
+            subsample_size=subsample_size,
             random_seed=seed
         )
         if data is not None:

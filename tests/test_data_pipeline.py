@@ -37,3 +37,19 @@ def test_preprocessor_scaling(synthetic_data):
     X_tr_s, X_te_s, y_tr, y_te = prep.fit_transform(X, y)
     assert np.all(X_tr_s >= 0.0)
     assert np.all(X_tr_s <= 1.0 + 1e-6)
+
+
+def test_insdn_subsample():
+    data = load_dataset({
+        'dataset': 'InSDN',
+        'subsample_size': 200,
+        'random_seed': 42
+    })
+    if data['X_train'] is not None:
+        assert data['X_train'].shape[0] == 200
+        assert data['X_train'].shape[1] == 77
+        assert data['X_train'].dtype == np.float64
+        assert 0 in data['class_distributions']['train']
+        assert 1 in data['class_distributions']['train']
+        assert data['X_test'].shape[0] >= 200
+        assert data['X_test'].shape[1] == 77

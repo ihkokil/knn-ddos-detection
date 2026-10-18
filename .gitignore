@@ -32,6 +32,7 @@ archive/
 data/raw/cicddos2019/*.csv
 data/raw/cicddos2019/*.pcap
 data/raw/nsl_kdd/*.txt
+data/raw/insdn/*.csv
 *.pcap
 
 # Paper manuscripts and documentation drafts (Strictly local)

@@ -404,7 +404,7 @@ def generate_statistical_report(results_dict: Dict[str, Dict],
     
     # Descriptive statistics
     lines.append("-" * 80)
-    lines.append("DESCRIPTIVE STATISTICS (mean ± std across trials)")
+    lines.append("DESCRIPTIVE STATISTICS (mean +/- std across trials)")
     lines.append("-" * 80)
     
     for metric in ['accuracy', 'precision', 'recall', 'f1', 'auc_roc']:
@@ -413,7 +413,7 @@ def generate_statistical_report(results_dict: Dict[str, Dict],
             result = results_dict[method]
             mean = result.get(f'{metric}_mean', 0)
             std = result.get(f'{metric}_std', 0)
-            lines.append(f"  {method:20s}: {mean:.4f} ± {std:.4f}")
+            lines.append(f"  {method:20s}: {mean:.4f} +/- {std:.4f}")
     
     # Pairwise comparisons
     lines.append("\n" + "-" * 80)
@@ -430,7 +430,7 @@ def generate_statistical_report(results_dict: Dict[str, Dict],
                       "*" if row.get('p_corrected', 1) < 0.05 else "ns"
                 lines.append(f"  {row['method_1']} vs {row['method_2']}: "
                            f"p={row.get('p_corrected', row['p_value']):.4f} {sig}, "
-                           f"Δ={row['mean_diff']:+.4f}, "
+                           f"Diff={row['mean_diff']:+.4f}, "
                            f"d={row['cohens_d']:.3f}")
     
     # Friedman test (if 3+ methods)
@@ -450,7 +450,7 @@ def generate_statistical_report(results_dict: Dict[str, Dict],
             if len(trial_arrays) >= 3 and all(len(arr) == len(trial_arrays[0]) for arr in trial_arrays):
                 friedman = friedman_test(*trial_arrays)
                 if 'error' not in friedman:
-                    lines.append(f"  {metric}: χ²={friedman['statistic']:.3f}, "
+                    lines.append(f"  {metric}: chi2={friedman['statistic']:.3f}, "
                                f"p={friedman['p_value']:.4f}, "
                                f"n={friedman['n_samples']}, k={friedman['n_groups']}")
     
@@ -458,11 +458,11 @@ def generate_statistical_report(results_dict: Dict[str, Dict],
     lines.append("INTERPRETATION GUIDE:")
     lines.append("  p < 0.05: Significant difference (after correction)")
     lines.append("  Cohen's d: 0.2=small, 0.5=medium, 0.8=large")
-    lines.append("  Cliff's δ: 0.147=small, 0.33=medium, 0.474=large")
+    lines.append("  Cliff's delta: 0.147=small, 0.33=medium, 0.474=large")
     lines.append("  Vargha-Delaney A12: 0.56=small, 0.64=medium, 0.71=large")
     lines.append("=" * 80)
     
-    return "\n".lines()
+    return "\n".join(lines)
 
 
 def bootstrap_confidence_interval(data: np.ndarray, 
@@ -597,7 +597,7 @@ def compute_win_tie_loss(results_dict: Dict[str, Dict],
     for i in range(n):
         for j in range(n):
             if i == j:
-                df.iloc[i, j] = "—"
+                df.iloc[i, j] = "-"
             else:
                 w, t, l = wtl[i, j]
                 df.iloc[i, j] = f"{int(w)}-{int(t)}-{int(l)}"
@@ -660,7 +660,7 @@ if __name__ == "__main__":
         np.array([t['f1'] for t in results['Improved']['trials']]),
         np.array([t['f1'] for t in results['Baseline']['trials']])
     )
-    print(f"  χ²={friedman['statistic']:.3f}, p={friedman['p_value']:.4f}")
+    print(f"  chi2={friedman['statistic']:.3f}, p={friedman['p_value']:.4f}")
     
     # Test stability analysis
     print("\n4. Trial stability:")
@@ -684,7 +684,7 @@ if __name__ == "__main__":
     
     print(f"  Cohen's d: {d:.3f}")
     print(f"  Hedges' g: {g:.3f}")
-    print(f"  Cliff's δ: {cliff:.3f}")
+    print(f"  Cliff's delta: {cliff:.3f}")
     print(f"  VD A12: {vd:.3f}")
     
-    print("\n✓ Statistical testing complete!")
+    print("\n[PASS] Statistical testing complete!")

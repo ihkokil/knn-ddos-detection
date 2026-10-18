@@ -247,8 +247,8 @@ class AblationStudy:
                 result = self.run_multiple_trials(variant, X_train, y_train, 
                                                   X_test, y_test, feature_names)
                 all_results[variant.name] = result
-                print(f"    F1: {result.get('f1_mean', 0):.4f} ± {result.get('f1_std', 0):.4f}")
-                print(f"    AUC: {result.get('auc_roc_mean', 0):.4f} ± {result.get('auc_roc_std', 0):.4f}")
+                print(f"    F1: {result.get('f1_mean', 0):.4f} +/- {result.get('f1_std', 0):.4f}")
+                print(f"    AUC: {result.get('auc_roc_mean', 0):.4f} +/- {result.get('auc_roc_std', 0):.4f}")
             except Exception as e:
                 print(f"    FAIL Failed: {e}")
                 all_results[variant.name] = {'variant': variant.name, 'error': str(e)}
@@ -335,7 +335,7 @@ def run_component_ablation(X_train: np.ndarray, y_train: np.ndarray,
     - use_degree_weighting: whether to use degree in distance/voting
     - use_distance_compression: whether to use bounded distance compression
     - use_adaptive_k: whether to use adaptive K
-    - use_dual_voting: whether to use dual voting (proximity × degree)
+    - use_dual_voting: whether to use dual voting (proximity * degree)
     """
     if config is None:
         config = {'k': 5, 'metric': 'euclidean', 'num_trials': 5, 'random_seed': 42}
@@ -448,4 +448,4 @@ if __name__ == "__main__":
     print("\n=== Ablation Effects (vs Full Proposed) ===")
     print(effects[['variant', 'f1_diff', 'f1_cohens_d', 'auc_roc_diff', 'auc_roc_cohens_d']].to_string(index=False))
     
-    print("\n✓ Ablation study test complete!")
+    print("\n[PASS] Ablation study test complete!")

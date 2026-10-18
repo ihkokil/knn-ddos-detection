@@ -125,7 +125,8 @@ class SVMClassifier(BaselineClassifier):
             gamma=gamma,
             class_weight=class_weight,
             probability=probability,
-            random_state=random_state
+            random_state=random_state,
+            cache_size=1000
         )
 
 
@@ -414,7 +415,7 @@ def run_baseline_comparison(X_train: np.ndarray, y_train: np.ndarray,
             print(f"    Train time: {metrics['training_time']:.3f}s, "
                   f"Inference: {metrics['mean_inference_time']*1000:.2f}ms avg")
         except Exception as e:
-            print(f"    ✗ Failed: {e}")
+            print(f"    FAIL Failed: {e}")
             results[name] = {'method': name, 'error': str(e)}
     
     return results
@@ -646,4 +647,4 @@ if __name__ == "__main__":
                 cal_metrics = compute_calibration_metrics(y_test, y_proba[:, 1])
                 print(f"  {name}: ECE={cal_metrics['ece']:.4f}, MCE={cal_metrics['mce']:.4f}")
     
-    print("\n✓ Baseline comparison complete!")
+    print("\n[PASS] Baseline comparison complete!")

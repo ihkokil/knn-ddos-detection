@@ -462,6 +462,62 @@ class NSLKDDSchema(DatasetFeatureSchema):
 
 
 # =============================================================================
+# InSDN Feature Schema
+# =============================================================================
+
+INSDN_RAW_FEATURES = [
+    'Protocol', 'Flow Duration', 'Tot Fwd Pkts', 'Tot Bwd Pkts', 'TotLen Fwd Pkts', 'TotLen Bwd Pkts',
+    'Fwd Pkt Len Max', 'Fwd Pkt Len Min', 'Fwd Pkt Len Mean', 'Fwd Pkt Len Std',
+    'Bwd Pkt Len Max', 'Bwd Pkt Len Min', 'Bwd Pkt Len Mean', 'Bwd Pkt Len Std',
+    'Flow Byts/s', 'Flow Pkts/s', 'Flow IAT Mean', 'Flow IAT Std', 'Flow IAT Max', 'Flow IAT Min',
+    'Fwd IAT Tot', 'Fwd IAT Mean', 'Fwd IAT Std', 'Fwd IAT Max', 'Fwd IAT Min',
+    'Bwd IAT Tot', 'Bwd IAT Mean', 'Bwd IAT Std', 'Bwd IAT Max', 'Bwd IAT Min',
+    'Fwd PSH Flags', 'Bwd PSH Flags', 'Fwd URG Flags', 'Bwd URG Flags',
+    'Fwd Header Len', 'Bwd Header Len', 'Fwd Pkts/s', 'Bwd Pkts/s',
+    'Pkt Len Min', 'Pkt Len Max', 'Pkt Len Mean', 'Pkt Len Std', 'Pkt Len Var',
+    'FIN Flag Cnt', 'SYN Flag Cnt', 'RST Flag Cnt', 'PSH Flag Cnt', 'ACK Flag Cnt', 'URG Flag Cnt',
+    'CWE Flag Count', 'ECE Flag Cnt', 'Down/Up Ratio', 'Pkt Size Avg',
+    'Fwd Seg Size Avg', 'Bwd Seg Size Avg', 'Fwd Byts/b Avg', 'Fwd Pkts/b Avg', 'Fwd Blk Rate Avg',
+    'Bwd Byts/b Avg', 'Bwd Pkts/b Avg', 'Bwd Blk Rate Avg',
+    'Subflow Fwd Pkts', 'Subflow Fwd Byts', 'Subflow Bwd Pkts', 'Subflow Bwd Byts',
+    'Init Fwd Win Byts', 'Init Bwd Win Byts', 'Fwd Act Data Pkts', 'Fwd Seg Size Min',
+    'Active Mean', 'Active Std', 'Active Max', 'Active Min',
+    'Idle Mean', 'Idle Std', 'Idle Max', 'Idle Min', 'Label'
+]
+
+
+class InSDNSchema(DatasetFeatureSchema):
+    """Schema for InSDN dataset (dedicated SDN intrusion dataset)."""
+    
+    def __init__(self):
+        super().__init__("InSDN")
+        self.raw_features = INSDN_RAW_FEATURES
+        self.label_column = "Label"
+        self.categorical_features = []
+        self.numerical_features = [f for f in INSDN_RAW_FEATURES if f != "Label"]
+        self.attack_type_mapping = {"Normal": 0, "DDoS": 1}
+        self.feature_groups = {
+            "flow_stats": ['Flow Duration', 'Flow Byts/s', 'Flow Pkts/s', 'Flow IAT Mean', 'Flow IAT Std', 'Flow IAT Max', 'Flow IAT Min'],
+            "packet_stats": ['Tot Fwd Pkts', 'Tot Bwd Pkts', 'TotLen Fwd Pkts', 'TotLen Bwd Pkts', 'Pkt Len Min', 'Pkt Len Max', 'Pkt Len Mean', 'Pkt Len Std', 'Pkt Len Var', 'Pkt Size Avg'],
+            "tcp_flags": ['FIN Flag Cnt', 'SYN Flag Cnt', 'RST Flag Cnt', 'PSH Flag Cnt', 'ACK Flag Cnt', 'URG Flag Cnt', 'ECE Flag Cnt', 'Fwd PSH Flags', 'Bwd PSH Flags', 'Fwd URG Flags', 'Bwd URG Flags'],
+            "window_segment": ['Init Fwd Win Byts', 'Init Bwd Win Byts', 'Fwd Seg Size Avg', 'Bwd Seg Size Avg', 'Fwd Seg Size Min'],
+            "active_idle": ['Active Mean', 'Active Std', 'Active Max', 'Active Min', 'Idle Mean', 'Idle Std', 'Idle Max', 'Idle Min']
+        }
+        
+    def get_feature_columns(self, include_id: bool = False) -> List[str]:
+        return [f for f in self.raw_features if f != self.label_column]
+        
+    def map_attack_type(self, label: Any) -> int:
+        if isinstance(label, (int, np.integer)):
+            return int(label)
+        label_str = str(label).strip()
+        return 0 if label_str.lower() == 'normal' else 1
+        
+    def get_binary_label(self, label: Any) -> int:
+        return self.map_attack_type(label)
+
+
+# =============================================================================
 # Schema Factory
 # =============================================================================
 
@@ -471,8 +527,10 @@ def get_dataset_schema(dataset_name: str) -> DatasetFeatureSchema:
         return CICDDOS2019Schema()
     elif dataset_name.upper() in ["NSL-KDD", "NSLKDD", "NSL"]:
         return NSLKDDSchema()
+    elif dataset_name.upper() in ["INSDN", "IN-SDN"]:
+        return InSDNSchema()
     else:
-        raise ValueError(f"Unknown dataset: {dataset_name}. Supported: CIC-DDoS2019, NSL-KDD")
+        raise ValueError(f"Unknown dataset: {dataset_name}. Supported: CIC-DDoS2019, NSL-KDD, InSDN")
 
 
 # =============================================================================
@@ -621,6 +679,38 @@ def engineer_features_nsl_kdd(df: pd.DataFrame,
     return X_array, y_binary, feature_names, degree_values, y_attack_category, y_attack_type
 
 
+def engineer_features_insdn(df: pd.DataFrame,
+                            schema: InSDNSchema = None,
+                            include_entropy: bool = True,
+                            include_degree: bool = True) -> Tuple[np.ndarray, np.ndarray, List[str], np.ndarray, np.ndarray]:
+    """
+    Engineer features for InSDN using explicit schema.
+    """
+    if schema is None:
+        schema = InSDNSchema()
+        
+    df = df.copy()
+    lbl_col = "Label" if "Label" in df.columns else ("label" if "label" in df.columns else None)
+    if lbl_col is None:
+        raise ValueError("InSDN data must have 'Label' column")
+        
+    y_binary = df[lbl_col].apply(schema.get_binary_label).values
+    y_attack_type = y_binary.copy()
+    
+    feature_cols = [c for c in df.columns if c not in ["Label", "label", "Target", "target"]]
+    X = df[feature_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0).replace([np.inf, -np.inf], 0.0)
+    feature_names = list(X.columns)
+    X_array = X.values.astype(float)
+    
+    degree_values = np.zeros(len(df))
+    if include_degree:
+        from src.degree_of_attack import DegreeOfAttackComputer
+        deg_computer = DegreeOfAttackComputer(method="proposed")
+        degree_values = deg_computer.compute_degree(X_array, feature_names=feature_names)
+        
+    return X_array, y_binary, feature_names, degree_values, y_attack_type
+
+
 def engineer_features_universal(df: pd.DataFrame, 
                                  dataset_name: str,
                                  **kwargs) -> Dict[str, Any]:
@@ -632,7 +722,7 @@ def engineer_features_universal(df: pd.DataFrame,
     df : pd.DataFrame
         Raw dataframe
     dataset_name : str
-        Dataset name ("CIC-DDoS2019" or "NSL-KDD")
+        Dataset name ("CIC-DDoS2019", "NSL-KDD", or "InSDN")
         
     Returns
     -------
@@ -658,6 +748,17 @@ def engineer_features_universal(df: pd.DataFrame,
             "X": X,
             "y_binary": y_bin,
             "y_attack_category": y_attack_cat,
+            "y_attack_type": y_attack_type,
+            "feature_names": feat_names,
+            "degree_values": degrees,
+            "dataset": dataset_name,
+            "schema": schema
+        }
+    elif isinstance(schema, InSDNSchema):
+        X, y_bin, feat_names, degrees, y_attack_type = engineer_features_insdn(df, schema, **kwargs)
+        return {
+            "X": X,
+            "y_binary": y_bin,
             "y_attack_type": y_attack_type,
             "feature_names": feat_names,
             "degree_values": degrees,

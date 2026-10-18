@@ -431,7 +431,7 @@ class ExperimentVisualizer:
         # Add summary stats
         overall_mean = np.mean(means)
         overall_std = np.mean(stds)
-        ax.text(0.95, 0.95, f'Mean: {overall_mean:.3f} ± {overall_std:.3f}',
+        ax.text(0.95, 0.95, f'Mean: {overall_mean:.3f} +/- {overall_std:.3f}',
                transform=ax.transAxes, fontsize=11,
                verticalalignment='top', horizontalalignment='right',
                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
@@ -562,4 +562,4 @@ if __name__ == "__main__":
     visualizer.plot_degree_distribution(normal_deg, attack_deg, 
                                        save_name="test_ddist.png")
     
-    print("\n✓ All visualization tests passed!")
+    print("\n[PASS] All visualization tests passed!")

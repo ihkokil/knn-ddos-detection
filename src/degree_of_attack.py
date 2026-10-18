@@ -37,25 +37,46 @@ class DegreeOfAttackComputer:
         self.normal_baseline: Optional[float] = None
         self.attack_baseline: Optional[float] = None
         self.percentile_threshold: Optional[float] = None
+        self.d_min: Optional[float] = None
+        self.d_max: Optional[float] = None
+        self.is_fitted: bool = False
     
+    def fit(self, X: np.ndarray, feature_names: Optional[List[str]] = None) -> 'DegreeOfAttackComputer':
+        """Fit degree normalization bounds strictly on training data."""
+        raw_degree = self._compute_from_array(X, feature_names)
+        self.d_min = float(np.min(raw_degree)) if len(raw_degree) > 0 else 0.0
+        self.d_max = float(np.max(raw_degree)) if len(raw_degree) > 0 else 1.0
+        self.is_fitted = True
+        return self
+
+    def transform(self, X: np.ndarray, feature_names: Optional[List[str]] = None) -> np.ndarray:
+        """Transform features into degree metrics using fitted normalization bounds."""
+        raw_degree = self._compute_from_array(X, feature_names)
+        if self.is_fitted and self.d_max is not None and self.d_min is not None and (self.d_max - self.d_min > 1e-8):
+            degree_norm = (raw_degree - self.d_min) / (self.d_max - self.d_min)
+        else:
+            d_min = float(np.min(raw_degree)) if len(raw_degree) > 0 else 0.0
+            d_max = float(np.max(raw_degree)) if len(raw_degree) > 0 else 1.0
+            degree_norm = (raw_degree - d_min) / (d_max - d_min) if d_max - d_min > 1e-8 else np.zeros_like(raw_degree)
+        return np.clip(degree_norm, 0.0, 1.0)
+
+    def fit_transform(self, X: np.ndarray, feature_names: Optional[List[str]] = None) -> np.ndarray:
+        """Fit on training data and transform."""
+        return self.fit(X, feature_names).transform(X, feature_names)
+
     def compute_degree(self, X: np.ndarray, 
                        feature_names: Optional[List[str]] = None,
                        X_df: Optional[pd.DataFrame] = None) -> np.ndarray:
         if X_df is not None:
             if feature_names is None:
                 feature_names = list(X_df.columns)
-            degree = self._compute_from_dataframe(X_df, feature_names)
+            X_arr = X_df[feature_names].values
         else:
-            degree = self._compute_from_array(X, feature_names)
-        
-        degree_min = np.min(degree)
-        degree_max = np.max(degree)
-        if degree_max - degree_min > 1e-8:
-            degree_norm = (degree - degree_min) / (degree_max - degree_min)
-        else:
-            degree_norm = np.zeros_like(degree)
-        
-        return np.clip(degree_norm, 0.0, 1.0)
+            X_arr = X
+
+        if self.is_fitted:
+            return self.transform(X_arr, feature_names)
+        return self.fit_transform(X_arr, feature_names)
 
     def compute_degree_from_array(
         self, X: np.ndarray, feature_names: Optional[List[str]] = None
