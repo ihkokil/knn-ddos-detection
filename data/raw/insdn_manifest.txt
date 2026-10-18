@@ -1,0 +1,27 @@
+DATASET MANIFEST: InSDN
+============================================================
+
+Version: 2020
+Source: https://github.com/nqmn/InSDN_ddos_dataset
+Citation: Elsayed, M. S., Le-Khac, N. A., & Jurcut, A. D. (2020). InSDN: A novel SDN intrusion dataset. IEEE Access, 8, 165263-165277.
+License: Academic Research Use
+Downloaded: 2026-10-18T12:49:19.768485
+
+FILES:
+------------------------------------------------------------
+
+insdn_ddos_binary_0n1d_test.csv:
+  Path: data\raw\insdn\insdn_ddos_binary_0n1d_test.csv
+  Size: 11,491,331 bytes
+  SHA256: 6182d2a17b84e48d4b2361a18cfc3ad8a85a9d0148f4b592d17f017ba4c9f917
+  Expected: verified_on_download
+  Verified: False
+  Description: SDN DDoS test flows with 48 features
+
+insdn_ddos_binary_0n1d_train_smote.csv:
+  Path: data\raw\insdn\insdn_ddos_binary_0n1d_train_smote.csv
+  Size: 69,615,392 bytes
+  SHA256: ce1e480b8ec620b7d491c8a4567c203fed04d732b6d0bc9bd4fedb45e93ce34d
+  Expected: verified_on_download
+  Verified: False
+  Description: SDN DDoS training flows with 48 features
