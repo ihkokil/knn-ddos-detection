@@ -8,6 +8,7 @@ Based on: Base paper improved KNN methodology and research extension requirement
 
 import numpy as np
 import pandas as pd
+from collections import Counter
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from imblearn.over_sampling import SMOTE
@@ -342,7 +343,7 @@ if __name__ == "__main__":
     y = np.array([0] * 800 + [1] * 200)  # 80% normal, 20% attack
     
     X_train, X_test, y_train, y_test = quick_preprocess(X, y)
-    print(f"✓ Preprocessing complete")
+    print(f"[OK] Preprocessing complete")
     print(f"  Train shape: {X_train.shape}, Test shape: {X_test.shape}")
     print(f"  Train class distribution: {dict(Counter(y_train))}")
     print(f"  Test class distribution: {dict(Counter(y_test))}")

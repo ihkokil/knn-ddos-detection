@@ -102,57 +102,61 @@ class ProposedKNN(ImprovedKNN):
         distances, indices = self._nn.kneighbors(X_arr, n_neighbors=max_k)
         labels = self.y_train[indices]
         
-        prob_attack = np.zeros(n_samples, dtype=np.float32)
         epsilon = 1e-8
         
-        for i in range(n_samples):
-            # 1. Adaptive K Selection based on neighborhood agreement
-            if self.adaptive_k:
-                core_labs = labels[i, :min(5, max_k)]
-                agreement = np.mean(core_labs == core_labs[0])
-                if agreement >= 0.8:
-                    cur_k = max(3, self.k_base - 2)
-                else:
-                    cur_k = min(self.k_base + 2, max_k)
-            else:
-                cur_k = min(self.k_base, max_k)
-                
-            cur_dists = distances[i, :cur_k]
-            cur_labs = labels[i, :cur_k]
+        # 1. Vectorized Adaptive K Selection based on neighborhood majority agreement
+        if self.adaptive_k:
+            core_k = min(5, max_k)
+            core_labs = labels[:, :core_k]
+            p_att_core = np.mean(core_labs == 1, axis=1)
+            # Majority agreement mode proportion in core neighborhood
+            agreement = np.maximum(p_att_core, 1.0 - p_att_core)
+            # In homogeneous regions (agreement >= 0.8), contract k; in boundary regions, expand k
+            k_opt = np.where(agreement >= 0.8, max(3, self.k_base - 2), min(self.k_base + 2, max_k))
+        else:
+            k_opt = np.full(n_samples, min(self.k_base, max_k), dtype=int)
             
-            # 2. Dual Proximity-Severity Weighting (numerically stable)
-            d_min = np.min(cur_dists)
-            d_scale = np.std(cur_dists) + 0.1 * np.median(cur_dists) + 1e-4
-            w = np.exp(-(cur_dists - d_min) / d_scale)
+        # Active neighbor mask of shape (n_samples, max_k)
+        col_indices = np.arange(max_k)[None, :]
+        active_mask = col_indices < k_opt[:, None]
+        
+        # 2. Vectorized Dual Proximity-Severity Weighting (numerically stabilized)
+        masked_dists = np.where(active_mask, distances, np.inf)
+        d_min = np.min(masked_dists, axis=1, keepdims=True)
+        d_min = np.where(np.isinf(d_min), 0.0, d_min)
+        
+        d_scale = np.std(distances, axis=1, keepdims=True) + 0.1 * np.median(distances, axis=1, keepdims=True) + 1e-4
+        w = np.exp(-(distances - d_min) / d_scale) * active_mask
+        
+        if self.degrees_train is not None:
+            k_degs = self.degrees_train[indices]
+            norm_deg = k_degs / (self.max_degree + epsilon)
+            sev_mult = np.where(
+                labels == 1,
+                1.0 + self.beta * norm_deg,
+                1.0 + self.beta * (1.0 - norm_deg)
+            )
+            w = w * sev_mult * active_mask
             
-            if self.degrees_train is not None:
-                k_degs = self.degrees_train[indices[i, :cur_k]]
-                norm_deg = k_degs / (self.max_degree + epsilon)
-                sev_mult = np.where(
-                    cur_labs == 1,
-                    1.0 + self.beta * norm_deg,
-                    1.0 + self.beta * (1.0 - norm_deg)
-                )
-                w = w * sev_mult
-                
-            lik_att = np.sum(w * (cur_labs == 1)) + epsilon
-            lik_norm = np.sum(w * (cur_labs == 0)) + epsilon
+        lik_att = np.sum(w * (labels == 1), axis=1) + epsilon
+        lik_norm = np.sum(w * (labels == 0), axis=1) + epsilon
+        
+        # 3. Calibrated Bayesian Evidence Fusion
+        if degrees_test is not None:
+            prior_att = np.clip(np.asarray(degrees_test, dtype=np.float32).reshape(-1), 0.05, 0.95)
+        elif self.degrees_train is not None:
+            w_sum = np.sum(w, axis=1, keepdims=True) + epsilon
+            norm_w = w / w_sum
+            k_degs = self.degrees_train[indices]
+            inferred_deg = np.sum(norm_w * k_degs, axis=1)
+            prior_att = np.clip(inferred_deg / (self.max_degree + epsilon), 0.05, 0.95)
+        else:
+            prior_att = np.full(n_samples, 0.5, dtype=np.float32)
             
-            # 3. Bayesian Evidence Fusion with Prior
-            if degrees_test is not None:
-                prior_att = np.clip(float(degrees_test[i]), 0.05, 0.95)
-            elif self.degrees_train is not None:
-                # Infer local prior from training exemplar neighborhood
-                k_degs = self.degrees_train[indices[i, :cur_k]]
-                norm_w = w / np.sum(w)
-                inferred_deg = float(np.sum(norm_w * k_degs))
-                prior_att = np.clip(inferred_deg / (self.max_degree + epsilon), 0.05, 0.95)
-            else:
-                prior_att = 0.5
-                
-            post_att = (lik_att * prior_att) / (lik_att * prior_att + lik_norm * (1.0 - prior_att) + epsilon)
-            prob_attack[i] = np.clip(post_att, 0.0, 1.0)
-            
+        post_num = lik_att * prior_att
+        post_den = post_num + lik_norm * (1.0 - prior_att) + epsilon
+        prob_attack = np.clip(post_num / post_den, 0.0, 1.0)
+        
         return np.column_stack([1.0 - prob_attack, prob_attack])
 
     def predict(self, X: np.ndarray, degrees_test: Optional[np.ndarray] = None) -> np.ndarray:
