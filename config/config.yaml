@@ -4,7 +4,7 @@
 
 # === Dataset Configuration ===
 dataset:
-  name: "CIC-DDoS2019"  # Options: "NSL-KDD", "CIC-DDoS2019", "synthetic"
+  name: "NSL-KDD"  # Options: "NSL-KDD", "CIC-DDoS2019", "synthetic"
   raw_path: "data/raw/"
   processed_path: "data/processed/"
   synthetic_path: "data/synthetic/"

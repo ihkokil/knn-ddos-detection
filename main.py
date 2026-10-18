@@ -190,6 +190,8 @@ def parse_args():
 
 def load_config(config_path: str) -> Dict[str, Any]:
     """Load configuration from YAML file."""
+    if not os.path.isabs(config_path):
+        config_path = os.path.join(project_root, config_path)
     from src.utils import ConfigLoader
     config = ConfigLoader.load_yaml(config_path)
     print(f"Loaded configuration from {config_path}")
@@ -199,11 +201,14 @@ def load_config(config_path: str) -> Dict[str, Any]:
     knn_cfg = config.get("knn", {})
     degree_cfg = config.get("degree_of_attack", {})
     experiment_cfg = config.get("experiment", {})
+    raw_path = dataset_cfg.get("raw_path", "data/raw")
+    if not os.path.isabs(raw_path):
+        raw_path = os.path.join(project_root, raw_path)
     return {
         **config,
         "dataset": dataset_cfg.get("name", "synthetic"),
         "dataset_path": os.path.join(
-            dataset_cfg.get("raw_path", "data/raw"),
+            raw_path,
             "cicddos2019" if dataset_cfg.get("name") == "CIC-DDoS2019"
             else "nsl_kdd" if dataset_cfg.get("name") == "NSL-KDD"
             else ""

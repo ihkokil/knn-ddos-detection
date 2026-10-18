@@ -159,8 +159,12 @@ def run_single_experiment(config: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError(f"Unknown method: {method}")
     
     # 5. Predict
-    y_pred = knn_model.predict(X_test_eng)
-    y_proba = knn_model.predict_proba(X_test_eng)
+    if method == 'proposed':
+        y_pred = knn_model.predict(X_test_eng, degrees_test=test_degrees)
+        y_proba = knn_model.predict_proba(X_test_eng, degrees_test=test_degrees)
+    else:
+        y_pred = knn_model.predict(X_test_eng)
+        y_proba = knn_model.predict_proba(X_test_eng)
     
     # Ensure y_proba has correct shape
     if y_proba.ndim == 1:

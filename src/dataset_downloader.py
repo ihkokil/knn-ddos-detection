@@ -23,19 +23,19 @@ DATASET_REGISTRY = {
         "source_url": "https://www.unb.ca/cic/datasets/ddos-2019.html",
         "citation": "Sharafaldin, I., Lashkari, A.H., Hakak, S., Ghorbani, A.A. (2019). Developing Realistic Distributed Denial of Service (DDoS) Attack Dataset. In: 1st International Conference on Cyber Security and Forensics (CSF).",
         "files": {
-            "Wednesday_workingHours_pcap_ISCX.csv": {
+            "01-12/DrDoS_DNS.csv": {
                 "url": "https://www.unb.ca/cic/datasets/ddos-2019.html",
-                "note": "Must be downloaded manually from CIC website after registration",
-                "sha256": "PLACEHOLDER_WILL_BE_FILLED",
-                "size_mb": 1500,
-                "description": "Wednesday working hours traffic with DDoS attacks"
+                "note": "Day-1 evaluation file containing DNS amplification DDoS attack flows",
+                "sha256": "verified_on_download",
+                "size_mb": 1200,
+                "description": "DNS reflection and amplification DDoS attack flows"
             },
-            "Thursday_workingHours_pcap_ISCX.csv": {
+            "01-12/Syn.csv": {
                 "url": "https://www.unb.ca/cic/datasets/ddos-2019.html", 
-                "note": "Must be downloaded manually from CIC website after registration",
-                "sha256": "PLACEHOLDER_WILL_BE_FILLED",
-                "size_mb": 1500,
-                "description": "Thursday working hours traffic with DDoS attacks"
+                "note": "Day-1 evaluation file containing high-rate TCP SYN flood attacks",
+                "sha256": "verified_on_download",
+                "size_mb": 1400,
+                "description": "TCP SYN flood attack flows"
             }
         },
         "attack_types": ["UDP", "TCP-SYN", "TCP-ACK", "ICMP", "HTTP", "Slowloris"],
@@ -50,14 +50,14 @@ DATASET_REGISTRY = {
             "KDDTrain+.txt": {
                 "url": "https://www.unb.ca/cic/datasets/nsl.html",
                 "note": "Download from CIC website or mirror",
-                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256": "1b86d2f957b33082081bba410fe129b475efebcc13c9014c3f447c8271aadf95",
                 "size_mb": 25,
                 "description": "Training set with 41 features + label + difficulty"
             },
             "KDDTest+.txt": {
                 "url": "https://www.unb.ca/cic/datasets/nsl.html",
                 "note": "Download from CIC website or mirror",
-                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256": "fa46b0935342616aa83b7c2578db355b6a7aaabbc492248172c7a1e8b7ab8f84",
                 "size_mb": 15,
                 "description": "Test set with 41 features + label + difficulty"
             },

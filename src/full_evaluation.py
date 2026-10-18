@@ -296,8 +296,12 @@ def evaluate_knn_models(models: Dict[str, Any], X_test: np.ndarray, y_test: np.n
     
     for name, model in models.items():
         print(f"  Evaluating {name}...")
-        y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)
+        try:
+            y_proba = model.predict_proba(X_test, degrees_test=degrees_test)
+            y_pred = model.predict(X_test, degrees_test=degrees_test)
+        except (TypeError, ValueError):
+            y_proba = model.predict_proba(X_test)
+            y_pred = model.predict(X_test)
         
         if y_proba.ndim == 1:
             y_proba = np.column_stack([1 - y_proba, y_proba])
@@ -319,7 +323,8 @@ def evaluate_knn_models(models: Dict[str, Any], X_test: np.ndarray, y_test: np.n
 
 def evaluate_per_attack_type(models: Dict[str, Any], X_test: np.ndarray,
                               y_test: np.ndarray, y_attack_test: np.ndarray,
-                              schema: Any, dataset_name: str) -> Dict[str, Any]:
+                              schema: Any, dataset_name: str,
+                              degrees_test: Optional[np.ndarray] = None) -> Dict[str, Any]:
     """Evaluate models per attack type."""
     print("\nEvaluating per attack type...")
     
@@ -327,8 +332,12 @@ def evaluate_per_attack_type(models: Dict[str, Any], X_test: np.ndarray,
     results = {}
     
     for name, model in models.items():
-        y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)
+        try:
+            y_proba = model.predict_proba(X_test, degrees_test=degrees_test)
+            y_pred = model.predict(X_test, degrees_test=degrees_test)
+        except (TypeError, ValueError):
+            y_proba = model.predict_proba(X_test)
+            y_pred = model.predict(X_test)
         if y_proba.ndim == 1:
             y_proba = np.column_stack([1 - y_proba, y_proba])
         
@@ -748,7 +757,8 @@ def run_full_evaluation(config: FullEvaluationConfig = None) -> Dict[str, Any]:
             # Per-attack-type evaluation
             attack_results = evaluate_per_attack_type(knn_models, data["X_test"],
                                                        data["y_test"], data["y_attack_test"],
-                                                       data["schema"], dataset_name)
+                                                       data["schema"], dataset_name,
+                                                       data.get("degrees_test"))
             
             # Calibration and latency
             cal_lat_results = evaluate_calibration_and_latency(knn_models, data["X_test"],

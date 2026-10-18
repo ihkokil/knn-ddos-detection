@@ -1,47 +1,59 @@
-# Documentation and private paper drafts
-docx/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*$py.class
-
-# C extensions
+*.class
 *.so
 
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-
-# Virtual environments
+# Virtual environments & build artifacts
 .env
 .venv
 env/
 venv/
 ENV/
+build/
+dist/
+*.egg-info/
 
 # Testing and coverage
-.pytest_cache/
 .coverage
+.coverage.*
+.pytest_cache/
 htmlcov/
 
-# Large dataset dumps (downloaded via script)
+# Local developer scripts and temporary experiment scratch
+scratch/
+scripts/
+results_*/
+results/test_run/
+archive/
+*.zip
+
+# Raw dataset dumps and PCAP packet captures (not distributed with repo)
 data/raw/cicddos2019/*.csv
 data/raw/cicddos2019/*.pcap
+data/raw/nsl_kdd/*.txt
 *.pcap
 
-# Temporary results and plots (preserve .gitkeep)
-results/*
-!results/.gitkeep
+# Paper manuscripts and documentation drafts (Strictly local)
+docx/
+latex/
 
 # IDE and editors
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.project
+.pydevproject
+.settings/
 
-# OS files
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 Desktop.ini

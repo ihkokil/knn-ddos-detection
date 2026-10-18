@@ -41,16 +41,15 @@ class FeaturePreprocessor:
             - 'test_size': float in (0, 1)
             - 'random_seed': int
         """
-        if config is None:
-            config = {
-                'scaling': 'minmax',
-                'encode_categorical': True,
-                'handle_missing': 'mean',
-                'balance_classes': False,
-                'test_size': 0.2,
-                'random_seed': 42
-            }
-        self.config = config
+        default_config = {
+            'scaling': 'minmax',
+            'encode_categorical': True,
+            'handle_missing': 'mean',
+            'balance_classes': False,
+            'test_size': 0.2,
+            'random_seed': 42
+        }
+        self.config = {**default_config, **(config or {})}
         self.scaler = None
         self.label_encoders = {}
         self.imputation_values = {}
